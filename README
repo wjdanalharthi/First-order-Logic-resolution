@@ -1,0 +1,9 @@
+
+NOTE: if you want to next arguments, for example 
+f(a, V, bar(D))
+where bar(D) is inside f()
+THEN YOU MUST parenthesize it! ==>
+f(a, V, (Har(D)))
+
+
+NOTE: You MUST standerize your variables (different variables between rules)
