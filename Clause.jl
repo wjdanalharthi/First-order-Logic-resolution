@@ -125,6 +125,9 @@ function printCNF(t::Any, indent::String="")
 	#	printCNF(t.args, indent)
 	#	print(")")
 	if !(t.op in OPS)
+		if t.negated
+			print("~")
+		end
                 print("$(t.op)(")
                 for i=1:length(t.args)-1
                         print("$(t.args[i].op),")
@@ -152,7 +155,21 @@ function printCNF(t::Any, indent::String="")
 		end
 
         end
-	println()
+end
+
+function printCNFClause(c::Array{Array{Clause,1},1})
+	for arr in c
+		printCNFClause(arr)
+		println()
+	end
+end
+
+function printCNFClause(arr::Array{Clause,1})    
+	for i in arr[1:end-1]
+		printCNF(i)
+                print(", ")
+        end
+        printCNF(arr[end])
 end
 
 function extract(symbol::String, arr::Array)

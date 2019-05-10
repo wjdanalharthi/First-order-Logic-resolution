@@ -288,13 +288,14 @@ end
 
 function MGU(c1::Array, c2::Array)
 	for i=1:length(c1)
-		println("checking $(c1[i]), $(c2[i])")
+		#println("checking $(c1[i]), $(c2[i])")
 		subt = MGUHelper(c1[i], c2[i])
 		if subt != false
 			return subt
+		else
+			return ()
 		end
 	end
-	return false
 end
 
 function MGUHelper(c1::Clause, c2::Clause)
@@ -317,7 +318,7 @@ function MGUHelper(c1::Clause, c2::Clause)
 		return (c1.op,c2.op)
         end
         if is_variable(c1) && is_variable(c2)
-		println("var & var")
+		#println("var & var")
 		if c1.op == c2.op
 			return false
 		end
@@ -346,7 +347,7 @@ function MGUHelper(c1::Clause, c2::Clause)
 end
 
 
-function resolve(kb, query)
+function resolveHelper(kb, query)
 	# add negated clause to kb
 	tell_cnf_terms(kb, [toCNF(negate(query))])
 	dict = index_clauses(kb)
@@ -354,40 +355,58 @@ function resolve(kb, query)
 	# for any two clauses 
 	# if we can unify, do it and reduce
 	 unifiable = []
-	 for k=1:length(kb.clauses)
-		 for term in kb.clauses[k]
-			 clauses_indices = dict[term.op]
+	 for k=1:length(kb.clauses)                  # [Howl(x), ~Hound(x)]
+		 for term in kb.clauses[k]           # Howl(x)
+			 clauses_indices = dict[term.op] 
 			 for i in clauses_indices
-				 flag, c = look_for_relation(kb.clauses[i], term.op)
-				 println("Checking relation $(term.op)")
-				 println("Args:")
-				 println("\t$(term.args)")
-				 println("\t$(c.args)")
-				unifiable = MGU(term.args, c.args)
-				println("SUBSTITUION $unifiable")
+				 print("CLAUSE WITH NEGATED $(term.op)  ")
+				 printCNFClause(kb.clauses[i])
+				 println()
 
+				 flag, c = look_for_relation(kb.clauses[i], term.op)
+				 #println("Checking relation $(term.op)")
+				 #println("Args:")
+				 #println("\t$(term.args)")
+				 #println("\t$(c.args)")
+
+				unifiable = MGU(term.args, c.args)
+				if length(unifiable) == 0 continue end 
+				#println("SUBSTITUION $unifiable")
+				
 				# so substitue and get remaining and add to KB
 				# first find index of c in kb.clauses[i]
-				println("Finding $(term.op)")
-				println("in $(kb.clauses[i])")
-				index = findall(x->x.op==term.op, kb.clauses[i])[1]
-				for j=1:length(kb.clauses[i][index].args)
-					if kb.clauses[i][index].args[j].op == unifiable[1]
-						kb.clauses[i][index].args[j].op = unifiable[2]
+				
+				#index = findall(x->x.op==term.op, kb.clauses[i])[1]
+				
+				for w=1:length(kb.clauses[k])
+					for j=1:length(kb.clauses[k][w].args)
+						if kb.clauses[k][w].args[j].op == unifiable[1]
+							kb.clauses[k][w].args[j].op = unifiable[2]
+						end
 					end
 				end
-				println("AFTER SUBSTITUION $(kb.clauses[i][index])")
+				#println("AFTER SUBSTITUION $(kb.clauses[k])")
 
 				# get remaining
 				union = append!(kb.clauses[i], kb.clauses[k])
 				indices = findall(x->x.op==term.op, union)
 				deleteat!(union, indices)
-				println("REMAINING $(union)") 
-				if length(unifiable) != 0 break end 
+			
+				print("\nFIRST: ")
+				printCNFClause(kb.clauses[i])
+				print("\nSECOND: ")
+				printCNFClause(kb.clauses[k])
+				print("\nREM: ")
+				printCNFClause(union)
+
+				if length(union) == 0
+					return nothing
+				else
+					tell(kb, union)
+					return kb
+				end
 			end
-			if length(unifiable) != 0 break end
 		end
-		if length(unifiable) != 0 break end
 	end
 
 	# we found a unification between c1 and c2
@@ -396,4 +415,18 @@ function resolve(kb, query)
 	# 3) if remaining terms == [] RETURN SUCCESS
 	# 4) otherwise add it to KB and repeat
 
+end
+
+function resolve(kb, query)
+        # add negated clause to kb
+        tell_cnf_terms(kb, [toCNF(negate(query))])
+
+	while true
+		kb = resolveHelper(kb, query)
+		if kb == nothing
+			return true
+		end
+		#println(kb.clauses)
+	end
+	return false
 end

@@ -21,9 +21,11 @@ end
 
 function tell_cnf_terms(kb, arr)
         for i in arr
-                if i.op == "|"
+		if i.op == "|"
 			c = internalize_negation(i.args)
 			tell(kb, c)
+		elseif is_relation(i)
+			tell(kb, [i])
                 else
 			tell(kb, internalize_negation([i.args[1]]))
 			tell_cnf_terms(kb, i.args[2:end])
