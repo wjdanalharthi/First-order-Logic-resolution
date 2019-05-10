@@ -20,15 +20,15 @@ OPS = [impliesTok, andTok, orTok, notTok]
 mutable struct Clause
         op::String
 	args
-	parents
+	negated::Bool
 end
 
-function Clause(op::String, info::Array, parents::Array)
+function Clause(op::String, info::Array)
 	args = []
 	if length(info) > 0
 		args = [toClause(i) for i in info]
 	end
-	return Clause(op, args, parents)
+	return Clause(op, args, false)
 end
 
 
@@ -37,20 +37,39 @@ function Clause(op::String, info::Array)
         if length(info) > 0
                 args = [toClause(i) for i in info]
         end
-        return Clause(op, args, nothing)
+        return Clause(op, args, false)
 end
 
 function Clause(op::String, info::String)
         args = [toClause(i) for i in info]
-        return Clause(op, args, nothing)
+        return Clause(op, args, false)
 end
 
 function Clause(op::String)
-	return Clause(op, [], [])
+	return Clause(op, [], false)
 end
 
-Base.:(==)(e1::Clause, e2::Clause) = ((e1.op == e2.op) && (e1.args == e2.args));
-
+function equal(e1, e2)
+	if typeof(e1) == Array{Any, 1} && typeof(e2) == Array{Any, 1}
+		return true
+	elseif typeof(e1) == Array{Clause, 1} && typeof(e2) == Array{Clause, 1}
+		if length(e1) == 0 && length(e2) == 0
+			return true
+		elseif length(e1) == 0 || length(e2) == 0
+			return false
+		else
+			return equal(e1[1], e2[1]) || equal(e1[2:end], e2[2:end])
+		end
+	elseif e1.op == e2.op
+		if length(e1.args) == length(e2.args)
+			return equal(e1.args, e2.args) 
+		else
+			return false
+		end
+	else 
+		return false
+	end
+end
 """
 function Base.show(io::IO, c::Clause)
 	if length(c.args) == 0 println(c.op) 
@@ -79,12 +98,11 @@ function Base.show(io::IO, c::Clause)
 		print(res)
 	end
 end
-"""
 
 function Base.show(io::IO, t::Clause)
         printCNF(t, "")
 end
-
+"""
 
 function printTree(t::Clause, indent::String)
         if !(t.op in OPS)
@@ -101,8 +119,12 @@ function printTree(t::Clause, indent::String)
         end
 end
 
-function printCNF(t::Clause, indent::String)
-        if !(t.op in OPS)
+function printCNF(t::Any, indent::String="")
+	#if t.op in ["forall", "exists"]
+	#	print("$(t.op) $(t.var)(")
+	#	printCNF(t.args, indent)
+	#	print(")")
+	if !(t.op in OPS)
                 print("$(t.op)(")
                 for i=1:length(t.args)-1
                         print("$(t.args[i].op),")
@@ -130,6 +152,7 @@ function printCNF(t::Clause, indent::String)
 		end
 
         end
+	println()
 end
 
 function extract(symbol::String, arr::Array)
@@ -175,7 +198,13 @@ function toClause(item)
 		#println("string $item")
 		return Clause(item, [])
         end
-        if impliesTok in item
+	if "forall" in item
+		l, r = extract("forall", item)
+		return Quantifier("forall", r[1], toClause(r[2:end]))
+	elseif "exits" in item 
+                l, r = extract("exits", item)
+                return Quantifier("exits", r[1], toClause(r[2:end]))
+	elseif impliesTok in item
                 l, r = extract(impliesTok, item)
 		return Clause(impliesTok, [l, r])
         elseif orTok in item

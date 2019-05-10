@@ -98,9 +98,12 @@ function is_variable(v::String)
 end
 
 function is_variable(c::Clause)
-	return length(c.args) == 0 && Base.islowercase(c.op[1])
+	return length(c.args) == 0 && Base.islowercase(c.op)
 end
 
+function constant(c::String)
+	return length(c.args) == 0 && Base.isupper(c.op[1])
+end
 
 function toCNF(c::Clause)
 	c = eliminate_implications(c)
@@ -198,8 +201,9 @@ end
 
 function unify(e1::Clause, e2::Clause, substitutions::Dict)
     println("CLAUSES $e1   , $e2    , $substitutions")
-    if (e1.op == e2.op) && (e1.args == e2.args)
-        return substitutions;
+    #if (e1.op == e2.op) && (e1.args == e2.args)
+    if equal(e1, e2)
+    	return substitutions;
     elseif is_variable(e1)
         return unify_variable(e1, e2, substitutions);
     elseif is_variable(e2)
@@ -220,4 +224,185 @@ function unify(a1::Array, a2::Array, substitutions::Dict)
 		return Dict([])
         end
     end
+end
+
+function is_symbol(s::String)
+        if length(s) == 0
+                return false
+        else
+                return Base.isletter(s[1])
+        end
+end
+
+function is_variable(v::String)
+        return is_symbol(v) && Base.islowercase(v[1])
+end
+
+function is_variable(c::Clause)
+	return length(c.args) == 0 && Base.islowercase(c.op[1])
+end
+
+function is_constant(c::Clause)
+        return length(c.args) == 0 && Base.isuppercase(c.op[1])
+end
+
+function is_relation(c::Clause)
+        return !(c.op in OPS) && length(c.args) != 0
+end
+
+function MGU1(c1::Clause, c2::Clause)
+	if is_constant(c1) && is_constant(c2)
+		if c1.op == c2.op return true
+		else return false end
+	end
+	if is_constant(c1) && is_variable(c2)
+		return Dict([c2.op=>c1.op])
+	end
+	if is_constant(c1) && is_relation(c2)
+		return false
+	end
+
+	if is_variable(c1) && is_constant(c2)
+		return Dict([c1.op=>c2.op])
+	end
+	if is_variable(c1) && is_variable(c2)
+		return Dict([c1.op=>c2.op])
+	end
+	if is_variable(c1) && is_relation(c2)
+		# TODO occurance checker 
+		return Dict([c1.op=>c2.op])
+	end
+	
+	if is_relation(c1) && is_constant(c2)
+		return false
+	end
+	if is_relation(c1) && is_variable(c2)
+		# occurance checker
+		return Dict([c2.op=>c1.op])
+	end
+	if is_relation(c1) && is_relation(c2)
+		if c1.op != c1.op return false end
+		return MGU(c1.args, c2.args) #TODO Fix
+	end
+end
+
+function MGU(c1::Array, c2::Array)
+	for i=1:length(c1)
+		println("checking $(c1[i]), $(c2[i])")
+		subt = MGUHelper(c1[i], c2[i])
+		if subt != false
+			return subt
+		end
+	end
+	return false
+end
+
+function MGUHelper(c1::Clause, c2::Clause)
+        if is_constant(c1) && is_constant(c2)
+        	println("cons & cons")
+		if c1.op == c2.op return true
+                else return false end
+        end
+        if is_constant(c1) && is_variable(c2)
+		println("cons & var")
+                return Dict([c2.op=>c1.op])
+        end
+        if is_constant(c1) && is_relation(c2)
+		println("cons & rel")
+                return false
+        end
+
+        if is_variable(c1) && is_constant(c2)
+		println("var & cons")
+                return Dict([c1.op=>c2.op])
+        end
+        if is_variable(c1) && is_variable(c2)
+		println("var & var")
+		if c1.op == c2.op
+			return false
+		end
+                return Dict([c1.op=>c2.op])
+        end
+        if is_variable(c1) && is_relation(c2)
+		println("var & rel")
+                # TODO occurance checker
+                return Dict([c1.op=>c2.op])
+        end
+
+        if is_relation(c1) && is_constant(c2)
+		println("rel & cons")
+                return false
+        end
+        if is_relation(c1) && is_variable(c2)
+		println("rel & var")
+                # occurance checker
+                return Dict([c2.op=>c1.op])
+        end
+        if is_relation(c1) && is_relation(c2)
+		println("rel & rel")
+                if c1.op != c1.op return false end
+                return MGU(c1.args, c2.args) #TODO Fix
+        end
+end
+
+function get_relation_args(c, rel::String)
+        if typeof(c) == Array{Clause, 1}
+                if length(c) == 0
+                        return false
+                else
+                        return look_for_relation(c[1], rel) || look_for_relation(c[2:end], rel)
+                end
+        elseif typeof(c) == Array{Any, 1}
+                return false
+        elseif c.op in OPS
+                return look_for_relation(c.args, rel)
+        else
+                if c.op == rel
+                        return c.args
+                else
+                        return look_for_relation(c.args, rel)
+                end
+        end
+end
+
+function resolve(kb, query)
+	# add negated clause to kb
+	tell_cnf_terms(kb, [toCNF(negate(query))])
+	dict = index_clauses(kb)
+
+	# for any two clauses 
+	# if we can unify, do it and reduce
+	 unifiable = []
+	 for c1 in kb.clauses
+		for c2 in kb.clauses
+			println("Checking")
+			println("\t $c1")
+			println("\t $c2")
+			if c1 == c2
+				continue
+			end
+			for term in c1
+				clauses = dict[term.op]
+				for c in clauses
+					args = get_relation_args(c, term.op)
+					println("comparing relation $(term.op)")
+					unifiable = MGU(c1, args)
+                        		if length(unifiable) != 0 
+                       	        		break
+					end
+
+                        	end
+			end
+		end
+		if length(unifiable) != 0
+			break
+		end
+	end
+
+	# we found a unification between c1 and c2
+	# 1) substitue vars 
+	# 2) get remaining terms
+	# 3) if remaining terms == [] RETURN SUCCESS
+	# 4) otherwise add it to KB and repeat
+
 end

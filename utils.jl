@@ -20,9 +20,10 @@ struct Sigma
 end
 
 
-struct Quantifier
+mutable struct Quantifier
 	op::String
-	args::Array
+	var::String
+	args::Any
 end
 
 struct Operator

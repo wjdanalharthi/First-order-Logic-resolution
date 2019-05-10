@@ -2,23 +2,64 @@ include("Clause.jl")
 get_new_variable = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
 
 mutable struct KnowledgeBase
-        clauses::Array{Clause, 1}
+        clauses::Array{Array{Clause,1},1}
 end
 
 function KnowledgeBase()
-	return KnowledgeBase([])
+	return KnowledgeBase(Array{Array{Clause,1},1}())
 end
 
 function KnowledgeBase(init::Array{Clause, 1})
 	kb = KnowledgeBase()
-	for i in init
-		tell(kb, i)
-	end
+	tell_cnf_terms(kb, init)
+	
+	#for i in init
+	#	tell(kb, i)
+	#end
 	return kb
 end
 
-function tell(kb::KnowledgeBase, predicate::Clause)
-	push!(kb.clauses, predicate)
+function tell_cnf_terms(kb, arr)
+        for i in arr
+                if i.op == "|"
+			c = internalize_negation(i.args)
+			tell(kb, c)
+                else
+			tell(kb, internalize_negation([i.args[1]]))
+			tell_cnf_terms(kb, i.args[2:end])
+                end
+        end
+end
+
+function internalize_negation(c)
+	for j=1:length(c)
+		if c[j].op == "~"
+			c[j] = c[j].args[1]
+			c[j].negated = true
+		end
+	end
+	return c
+end
+
+"""
+function tell_cnf_terms(kb, arr)
+        for i in arr
+                if i.op == "~"
+                        clause = i.args[1]
+                        clase.negated = true
+                        tell(kb, clause)
+                elseif is_relation(i)
+                        tell(kb, [i])
+                else
+                        tell_cnf_terms(kb, i.args)
+                end
+        end
+end
+"""
+
+function tell(kb::KnowledgeBase, predicates::Array)
+	# first find all Relations and create index
+	append!(kb.clauses, [predicates])
 end
 
 function retract(kb::KnowledgeBase, c::Clause)
@@ -28,6 +69,78 @@ function retract(kb::KnowledgeBase, c::Clause)
             break;
         end
     end
+end
+
+function is_relation(c::Clause)
+	return !(c.op in OPS) && length(c.args) != 0 
+end
+
+"""
+function find_all_relations(c::Array, lib::Array{String, 1}=Array{String,1}())
+	if length(c) == 0
+		return lib
+	elseif is_relation(c[1])
+		if !(c[1].op in lib)
+			append!(lib, [string(c[1].op)])
+		end
+		return find_all_relations(c[2:end], lib)
+	elseif c[1].op == "~"
+		lib = find_all_relations([c[1]], lib)
+		return find_all_relations(c[2:end], lib)
+
+	end
+	#for i in c.args
+	#	lib = find_all_relations(i, lib) 
+	#end
+	return lib
+end
+"""
+
+function find_all_relations(c)
+	return [x.op for x in c]
+end
+
+# create indices for better unification
+function look_for_relation(c, rel::String)
+        if typeof(c) == Array{Clause, 1}
+                if length(c) == 0
+                        return false
+                else
+                        return look_for_relation(c[1], rel) || look_for_relation(c[2:end], rel)
+                end
+        elseif typeof(c) == Array{Any, 1}
+                return false
+        elseif c.op in OPS
+                return look_for_relation(c.args, rel)
+        else
+                if c.op == rel
+                        return true
+                else
+                        return look_for_relation(c.args, rel)
+                end
+        end
+end
+
+function index_clauses(kb::KnowledgeBase)
+	d = Dict()
+	for i in kb.clauses
+		all_rels = find_all_relations(i)
+		for j in all_rels
+			if !haskey(d, j)
+				d[j] = Array{Array{Clause, 1}, 1}()
+			end
+		end
+	end
+	
+	for key in keys(d)
+		for i in kb.clauses
+			if look_for_relation(i, key)
+				append!(d[key], [i])
+			end
+		end
+	end
+
+	return d
 end
 
 function standardize_variables(c::Clause, ref::AbstractVector,
