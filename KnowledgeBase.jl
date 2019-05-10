@@ -133,16 +133,16 @@ function index_clauses(kb::KnowledgeBase)
 		all_rels = find_all_relations(i)
 		for j in all_rels
 			if !haskey(d, j)
-				d[j] = Array{Array{Clause, 1}, 1}()
+				d[j] = Array{Int32, 1}()
 			end
 		end
 	end
 	
 	for key in keys(d)
-		for i in kb.clauses
-			flag, c = look_for_relation(i, key)
+		for i=1:length(kb.clauses)
+			flag, c = look_for_relation(kb.clauses[i], key)
 			if flag && c.negated
-				append!(d[key], [i])
+				append!(d[key], i)
 			end
 		end
 	end
