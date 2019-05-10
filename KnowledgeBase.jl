@@ -104,17 +104,23 @@ end
 function look_for_relation(c, rel::String)
         if typeof(c) == Array{Clause, 1}
                 if length(c) == 0
-                        return false
+                        return false, nothing
                 else
-                        return look_for_relation(c[1], rel) || look_for_relation(c[2:end], rel)
+                        f1, c1 = look_for_relation(c[1], rel)
+			f2, c2 = look_for_relation(c[2:end], rel)
+			if f1
+				return f1, c1
+			else
+				return f2, c2
+			end
                 end
         elseif typeof(c) == Array{Any, 1}
-                return false
+                return false, nothing
         elseif c.op in OPS
                 return look_for_relation(c.args, rel)
         else
                 if c.op == rel
-                        return true
+                        return true, c
                 else
                         return look_for_relation(c.args, rel)
                 end
@@ -134,7 +140,8 @@ function index_clauses(kb::KnowledgeBase)
 	
 	for key in keys(d)
 		for i in kb.clauses
-			if look_for_relation(i, key)
+			flag, c = look_for_relation(i, key)
+			if flag && c.negated
 				append!(d[key], [i])
 			end
 		end

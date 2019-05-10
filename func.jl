@@ -345,25 +345,6 @@ function MGUHelper(c1::Clause, c2::Clause)
         end
 end
 
-function get_relation_args(c, rel::String)
-        if typeof(c) == Array{Clause, 1}
-                if length(c) == 0
-                        return false
-                else
-                        return look_for_relation(c[1], rel) || look_for_relation(c[2:end], rel)
-                end
-        elseif typeof(c) == Array{Any, 1}
-                return false
-        elseif c.op in OPS
-                return look_for_relation(c.args, rel)
-        else
-                if c.op == rel
-                        return c.args
-                else
-                        return look_for_relation(c.args, rel)
-                end
-        end
-end
 
 function resolve(kb, query)
 	# add negated clause to kb
@@ -374,30 +355,26 @@ function resolve(kb, query)
 	# if we can unify, do it and reduce
 	 unifiable = []
 	 for c1 in kb.clauses
-		for c2 in kb.clauses
-			println("Checking")
-			println("\t $c1")
-			println("\t $c2")
-			if c1 == c2
-				continue
+		 for term in c1
+			 clauses = dict[term.op]
+			 for c2 in clauses
+				 flag, c = look_for_relation(c2, term.op)
+				 println("Checking relation $(term.op)")
+				 println("Args:")
+				 println("\t$(term.args)")
+				 println("\t$(c.args)")
+				unifiable = MGU(term.args, c.args)
+				println("SUBSTITUION $unifiable")
+				if length(unifiable) != 0 break end 
 			end
-			for term in c1
-				clauses = dict[term.op]
-				for c in clauses
-					args = get_relation_args(c, term.op)
-					println("comparing relation $(term.op)")
-					unifiable = MGU(c1, args)
-                        		if length(unifiable) != 0 
-                       	        		break
-					end
-
-                        	end
-			end
+			if length(unifiable) != 0 break end
 		end
-		if length(unifiable) != 0
-			break
-		end
+		if length(unifiable) != 0 break end
 	end
+
+	# here we found a possible substituion
+	# so substitue and get remaining
+		
 
 	# we found a unification between c1 and c2
 	# 1) substitue vars 
