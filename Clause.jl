@@ -58,10 +58,10 @@ function equal(e1, e2)
 		elseif length(e1) == 0 || length(e2) == 0
 			return false
 		else
-			return equal(e1[1], e2[1]) || equal(e1[2:end], e2[2:end])
+			return equal(e1[1], e2[1]) && equal(e1[2:end], e2[2:end])
 		end
 	elseif e1.op == e2.op
-		if length(e1.args) == length(e2.args)
+		if length(e1.args) == length(e2.args) && (e1.negated == e2.negated)
 			return equal(e1.args, e2.args) 
 		else
 			return false
@@ -70,6 +70,23 @@ function equal(e1, e2)
 		return false
 	end
 end
+
+function inArray(a1, c)
+	for i in a1
+		if equal(c, i) return true end
+	end
+	return false
+end
+
+function allEqual(a1::Array, a2::Array)
+	if length(a1) != length(a2) return false end
+	for i in a1
+		if !inArray(a2, i) return false end
+	end
+	return true
+end
+
+
 """
 function Base.show(io::IO, c::Clause)
 	if length(c.args) == 0 println(c.op) 
@@ -158,6 +175,10 @@ function printCNF(t::Any, indent::String="")
 end
 
 function printCNFClause(c::Array{Array{Clause,1},1})
+        if length(c) == 0 
+                println("[]")
+		return
+        end
 	for arr in c
 		printCNFClause(arr)
 		println()
@@ -165,6 +186,10 @@ function printCNFClause(c::Array{Array{Clause,1},1})
 end
 
 function printCNFClause(arr::Array{Clause,1})    
+	if length(arr) == 0 
+		println("[]")
+		return
+	end
 	for i in arr[1:end-1]
 		printCNF(i)
                 print(", ")

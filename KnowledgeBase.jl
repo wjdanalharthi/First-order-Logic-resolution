@@ -19,19 +19,36 @@ function KnowledgeBase(init::Array{Clause, 1})
 	return kb
 end
 
+function Base.show(io::IO, kb::KnowledgeBase)
+	printCNFClause(kb.clauses)
+end
+
 function tell_cnf_terms(kb, arr)
+	println("Starting with $arr")
         for i in arr
 		if i.op == "|"
+			println("found OR")
 			c = internalize_negation(i.args)
 			tell(kb, c)
 		elseif is_relation(i)
+			println("found REL i.op")
 			tell(kb, [i])
+		elseif i.op == "~"
+			c = internalize_negation(i.args[1])
+			tell(kb, [c])
                 else
-			tell(kb, internalize_negation([i.args[1]]))
+			println("Adding $(i.args[1])")
+			tell(kb, [i.args[1]])
 			tell_cnf_terms(kb, i.args[2:end])
                 end
         end
 end
+
+function internalize_negation(c::Clause)
+	c.negated = true
+	return c
+end
+
 
 function internalize_negation(c)
 	for j=1:length(c)
@@ -59,9 +76,35 @@ function tell_cnf_terms(kb, arr)
 end
 """
 
-function tell(kb::KnowledgeBase, predicates::Array)
+function remove_duplicates(arr)
+        no_dups = []
+        for i in arr
+                #rem = append!(copy(predicates)[1:i-1], copy(predicates)[i+1:end]) 
+                if !inArray(no_dups, i)
+                        append!(no_dups, [i])
+                end
+        end
+	return no_dups
+end
+
+function exists_in_kb(kb, arr)
+        for i in kb.clauses
+                if allEqual(i, arr) return true end
+        end
+	return false
+end
+
+function tell(kb::KnowledgeBase, clauses::Array)
 	# first find all Relations and create index
-	append!(kb.clauses, [predicates])
+	if length(clauses) == 0
+		return true
+	end
+
+	clauses = remove_duplicates(clauses)
+	if exists_in_kb(kb, clauses) return false end
+
+	append!(kb.clauses, [clauses])
+	return true
 end
 
 function retract(kb::KnowledgeBase, c::Clause)
@@ -136,6 +179,7 @@ function index_clauses(kb::KnowledgeBase)
 		for j in all_rels
 			if !haskey(d, j)
 				d[j] = Array{Int32, 1}()
+				d["~"*j] = Array{Int32, 1}()
 			end
 		end
 	end
@@ -143,8 +187,12 @@ function index_clauses(kb::KnowledgeBase)
 	for key in keys(d)
 		for i=1:length(kb.clauses)
 			flag, c = look_for_relation(kb.clauses[i], key)
-			if flag && c.negated
-				append!(d[key], i)
+			if flag
+				if !c.negated
+					append!(d[key], i)
+				else
+					append!(d["~"*key], i)
+				end
 			end
 		end
 	end

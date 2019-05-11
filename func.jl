@@ -286,58 +286,85 @@ function MGU1(c1::Clause, c2::Clause)
 	end
 end
 
-function MGU(c1::Array, c2::Array)
-	for i=1:length(c1)
-		#println("checking $(c1[i]), $(c2[i])")
-		subt = MGUHelper(c1[i], c2[i])
+function occurs_checker(subt, c1)
+	# check if the subt val in c1 vars
+	"""
+	v = [x for x in values(subt)][1]
+	for c in c1
+		if is_variable(c)
+			if c.op == v return false
+			else return true end
+		elseif is_relation(c)
+
+		elseif is_constant(c)
+		end
+	end
+	"""
+	return true
+end
+
+function MGU(c1::Array, k, c2::Array, m)
+	dict = Dict()
+	for i=1:length(c1[k].args)
+		occurs_check, subt = MGUHelper(c1[k].args[i], c2[m].args[i])
 		if subt != false
-			return subt
+			if occurs_check
+				if occurs_checker(subt, c1::Array)
+					return subt
+				else return () end
+			else
+				if length(subt) != 0
+					dict[subt[1]] = subt[2]
+				end
+			end
 		else
 			return ()
 		end
 	end
+	return dict
 end
 
 function MGUHelper(c1::Clause, c2::Clause)
         if is_constant(c1) && is_constant(c2)
         	println("cons & cons")
-		if c1.op == c2.op return true
-                else return false end
+		#TODO what does success mean??
+		if c1.op == c2.op return false, (c1.op,c2.op)
+                else return false, false end
         end
         if is_constant(c1) && is_variable(c2)
 		println("cons & var")
-		return (c2.op,c1.op)
+		return false, (c2.op,c1.op)
         end
         if is_constant(c1) && is_relation(c2)
 		println("cons & rel")
-                return false
+                return false, false
         end
 
         if is_variable(c1) && is_constant(c2)
 		println("var & cons")
-		return (c1.op,c2.op)
+		return false, (c1.op,c2.op)
         end
         if is_variable(c1) && is_variable(c2)
 		#println("var & var")
-		if c1.op == c2.op
-			return false
-		end
-                return (c1.op,c2.op)
+		#if c1.op == c2.op
+		#	return false, false
+		#end
+                return false, (c1.op,c2.op)
         end
         if is_variable(c1) && is_relation(c2)
 		println("var & rel")
                 # TODO occurance checker
-		return (c1.op,c2.op)
+		return true, (c1.op,c2.op)
         end
 
         if is_relation(c1) && is_constant(c2)
 		println("rel & cons")
-                return false
+                return false, false
         end
         if is_relation(c1) && is_variable(c2)
 		println("rel & var")
-                # occurance checker
-                return (c2.op,c1.op)
+                # TODO occurance checker
+                return true, (c2.op,c1.op)
         end
         if is_relation(c1) && is_relation(c2)
 		println("rel & rel")
@@ -349,61 +376,87 @@ end
 
 function resolveHelper(kb, query)
 	# add negated clause to kb
-	tell_cnf_terms(kb, [toCNF(negate(query))])
 	dict = index_clauses(kb)
 
 	# for any two clauses 
 	# if we can unify, do it and reduce
 	 unifiable = []
-	 for k=1:length(kb.clauses)                  # [Howl(x), ~Hound(x)]
-		 for term in kb.clauses[k]           # Howl(x)
-			 clauses_indices = dict[term.op] 
-			 for i in clauses_indices
-				 print("CLAUSE WITH NEGATED $(term.op)  ")
+	 for k=1:length(kb.clauses)                        # [Howl(x), ~Hound(x)]
+		 print("\n\n******* Current Clause  ")
+		 printCNFClause(kb.clauses[k])
+		 for m=1:length(kb.clauses[k])                 # Howl(x)
+			 
+			 print("\n\nCurrent Term ")
+			 printCNF(kb.clauses[k][m])
+
+			 clauses_indices = []
+			 if kb.clauses[k][m].negated
+				 clauses_indices = dict[kb.clauses[k][m].op]   # clauses with ~Howl(x)
+			 else
+				 clauses_indices = dict["~"*kb.clauses[k][m].op]
+			end
+
+			 for i in clauses_indices          # index of ~Has(w,t), ~Howl(t), ~LS(w)
+				 print("\nClause with Negated ")
+				 printCNF(kb.clauses[k][m]); print(" ==> ")
 				 printCNFClause(kb.clauses[i])
-				 println()
 
-				 flag, c = look_for_relation(kb.clauses[i], term.op)
-				 #println("Checking relation $(term.op)")
-				 #println("Args:")
-				 #println("\t$(term.args)")
-				 #println("\t$(c.args)")
-
-				unifiable = MGU(term.args, c.args)
-				if length(unifiable) == 0 continue end 
-				#println("SUBSTITUION $unifiable")
+				 # find ~Howl(x) at ith index
+				 rel_index = findall(x->x.op==kb.clauses[k][m].op, kb.clauses[i])[1]
+				 #flag, c = look_for_relation(kb.clauses[i], term.op)
 				
+				#println("\nc vs rel_index")
+				#printCNF(c)
+				#printCNF(kb.clauses[i][rel_index])
+				
+				unifiable = MGU(kb.clauses[k], m, kb.clauses[i], rel_index)
+				if length(unifiable) == 0 
+					println("\n Not Unifiable")
+					continue
+				end 
+				#println("SUBSTITUION $unifiable")
+			
+				print("\nUnifying $(kb.clauses[k][m].op) args in: \n\t")
+        			printCNFClause(kb.clauses[k]); print("\n\t")
+        			printCNFClause(kb.clauses[i])
+
 				# so substitue and get remaining and add to KB
 				# first find index of c in kb.clauses[i]
 				
 				#index = findall(x->x.op==term.op, kb.clauses[i])[1]
-				
+				for (key, val) in unifiable
 				for w=1:length(kb.clauses[k])
 					for j=1:length(kb.clauses[k][w].args)
-						if kb.clauses[k][w].args[j].op == unifiable[1]
-							kb.clauses[k][w].args[j].op = unifiable[2]
+						if kb.clauses[k][w].args[j].op == key
+							kb.clauses[k][w].args[j].op = val
 						end
 					end
 				end
-				#println("AFTER SUBSTITUION $(kb.clauses[k])")
+				end
+				print("\nUnified $(kb.clauses[k][m].op) by $unifiable\n\t")
+				printCNFClause(kb.clauses[k]); print("\n\t")
+                                printCNFClause(kb.clauses[i])
 
 				# get remaining
-				union = append!(kb.clauses[i], kb.clauses[k])
-				indices = findall(x->x.op==term.op, union)
+				union = append!(copy(kb.clauses[k]), copy(kb.clauses[i]))
+				indices = findall(x->x.op==kb.clauses[k][m].op&&allEqual(x.args,kb.clauses[k][m].args), union)
 				deleteat!(union, indices)
 			
-				print("\nFIRST: ")
-				printCNFClause(kb.clauses[i])
-				print("\nSECOND: ")
-				printCNFClause(kb.clauses[k])
-				print("\nREM: ")
+				print("\nResult Clause: \n\t")
 				printCNFClause(union)
-
+				println()
 				if length(union) == 0
-					return nothing
+					println("Union Clause is empty!!")
+					return true
 				else
-					tell(kb, union)
-					return kb
+					flag = tell(kb, union)
+					if flag 
+						println("\n ADDED TO KB")
+						#return kb
+						#dict = index_clauses(kb)
+						#else continue end
+						return false
+					end
 				end
 			end
 		end
@@ -414,7 +467,7 @@ function resolveHelper(kb, query)
 	# 2) get remaining terms
 	# 3) if remaining terms == [] RETURN SUCCESS
 	# 4) otherwise add it to KB and repeat
-
+	return false
 end
 
 function resolve(kb, query)
@@ -422,11 +475,16 @@ function resolve(kb, query)
         tell_cnf_terms(kb, [toCNF(negate(query))])
 
 	while true
-		kb = resolveHelper(kb, query)
-		if kb == nothing
+		flag = resolveHelper(kb, query)
+		if flag
+			println("\nEntails")
 			return true
+		else
+			println("\nFailed")
+			#return false
 		end
 		#println(kb.clauses)
 	end
+	println("\nDoes Not entail")
 	return false
 end

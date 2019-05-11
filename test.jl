@@ -15,9 +15,14 @@ ooo = "exits v (Has(John, v) & (Cat(v) | Hound(v)))"
 example = ["Hound(x) ==> Howl(x)",
            "(Has(y, z) & Cat(z)) ==> ~(Has(y,u) & Mouse(u))",
            "LS(w) ==> ~(Has(w, t) & Howl(t))",
-           "Has(John, v) & (Cat(v) | Hound(v))"]
+           "Has(John, a) & (Cat(a) | Hound(a))"]
+example_query = "LS(John) ==> ~(Has(John, b) & Mouse(b))"
 
-example_query = "LS(John) ==> ~(Has(John, m) & Mouse(m))"
+#example = ["Hound(x) ==> Howl(x)"]
+#example_query = "~Hound(x) | Howl(y)"
+
+#example = ["LS(w) ==> ~(Has(w, t) & Howl(t))"]
+#example_query = "LS(John) ==> ~(Has(John, b) & Mouse(b))"
 
 # turn into expression
 cnf_clauses = map(toCNF, map(toClause, map(lexer, example)))
