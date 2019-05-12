@@ -140,19 +140,6 @@ function distribute_and_over_or(e::Clause)
     end
 end
 
-function printClause(e::Clause)
-    if (length(e.args) == 0)
-        return e.op;
-    elseif (is_symbol(e.op))
-        return @sprintf("%s(%s)", e.op, join(map(printClause, map(Clause, e.args)), ", "));
-    elseif (length(e.args) == 1)
-        return @sprintf("%s(%s)", e.op, printClause(Clause(e.args[1])));
-    else
-        return @sprintf("(%s)", join(map(printClause, map(Clause, map(string, e.args))), @sprintf(" %s ", e.op)));
-    end
-end
-
-
 function occurrence_check(key::Clause, x, substitutions::Dict)
     if (key == x)
         println("occurrence_check(::Expression, ::Union{Tuple, Vector}, ::Dict) returned true!!!");
@@ -166,18 +153,14 @@ function occurrence_check(key::Clause, x, substitutions::Dict)
     end
 end
 
-
+"""
 function extend(dict::Dict, key, val)
-	println()
-	println("$key, $val")
-	println()
     local new_dict::Dict = copy(dict);
     new_dict[key] = val;
     return new_dict;
 end
 
 function unify_variable(key, x, substitutions::Dict)
-    println("$key,    $x,       $substitutions")
     if (key in keys(substitutions))
         return unify(substitutions[key], x, substitutions);
     elseif (x in keys(substitutions))
@@ -190,7 +173,6 @@ function unify_variable(key, x, substitutions::Dict)
 end
 
 function unify(e1::String, e2::String, substitutions::Dict)
-    println("STRINGS $e1   , $e2    , $substitutions")
 
     if (e1 == e2)
         return substitutions;
@@ -200,7 +182,6 @@ function unify(e1::String, e2::String, substitutions::Dict)
 end
 
 function unify(e1::Clause, e2::Clause, substitutions::Dict)
-    println("CLAUSES $e1   , $e2    , $substitutions")
     #if (e1.op == e2.op) && (e1.args == e2.args)
     if equal(e1, e2)
     	return substitutions;
@@ -214,7 +195,6 @@ function unify(e1::Clause, e2::Clause, substitutions::Dict)
 end
 
 function unify(a1::Array, a2::Array, substitutions::Dict)
-	println("ARRAYS $a1     , $a2       ,$substitutions")
     if (a1 == a2)
         return substitutions;
     else
@@ -225,6 +205,7 @@ function unify(a1::Array, a2::Array, substitutions::Dict)
         end
     end
 end
+"""
 
 function is_symbol(s::String)
         if length(s) == 0
@@ -250,42 +231,7 @@ function is_relation(c::Clause)
         return !(c.op in OPS) && length(c.args) != 0
 end
 
-function MGU1(c1::Clause, c2::Clause)
-	if is_constant(c1) && is_constant(c2)
-		if c1.op == c2.op return true
-		else return false end
-	end
-	if is_constant(c1) && is_variable(c2)
-		return Dict([c2.op=>c1.op])
-	end
-	if is_constant(c1) && is_relation(c2)
-		return false
-	end
-
-	if is_variable(c1) && is_constant(c2)
-		return Dict([c1.op=>c2.op])
-	end
-	if is_variable(c1) && is_variable(c2)
-		return Dict([c1.op=>c2.op])
-	end
-	if is_variable(c1) && is_relation(c2)
-		# TODO occurance checker 
-		return Dict([c1.op=>c2.op])
-	end
-	
-	if is_relation(c1) && is_constant(c2)
-		return false
-	end
-	if is_relation(c1) && is_variable(c2)
-		# occurance checker
-		return Dict([c2.op=>c1.op])
-	end
-	if is_relation(c1) && is_relation(c2)
-		if c1.op != c1.op return false end
-		return MGU(c1.args, c2.args) #TODO Fix
-	end
-end
-
+# TODO COMPLETE
 function occurs_checker(subt, c1)
 	# check if the subt val in c1 vars
 	"""
@@ -372,7 +318,6 @@ function MGUHelper(c1::Clause, c2::Clause)
                 return MGU(c1.args, c2.args) #TODO Fix
         end
 end
-
 
 function resolveHelper(kb, query)
 	# add negated clause to kb

@@ -23,16 +23,6 @@ mutable struct Clause
 	negated::Bool
 end
 
-"""
-function Clause(op::String, info::Array)
-	args = []
-	if length(info) > 0
-		args = [toClause(i) for i in info]
-	end
-	return Clause(op, args, false)
-end
-"""
-
 function Clause(op::String, info)
 	args = Array{Clause, 1}()
         if length(info) > 0
@@ -40,13 +30,6 @@ function Clause(op::String, info)
         end
 	return Clause(op, Array{Clause, 1}(args), false)
 end
-
-"""
-function Clause(op::String, info::String)
-	args = Array{Clause, 1}([toClause(i) for i in info])
-        return Clause(op, args, false)
-end
-"""
 
 function Clause(op::String)
 	return Clause(op, Array{Clause, 1}(), false)
@@ -109,40 +92,6 @@ function copyClause(c::Array{Clause, 1})
 	end
 	return new_arr
 end
-
-"""
-function Base.show(io::IO, c::Clause)
-	if length(c.args) == 0 println(c.op) 
-	elseif !(c.op in OPS) 
-		x = string(c.args[1])
-		for arg in c.args[2:end]
-			x = x * ", " * string(arg)
-		end
-		return c.op * "(" * x * ")"
-	elseif c.op == notTok
-		if !(c.args[1] in OPS) return notTok * string(c.args[1])
-		else return notTok * "(" * string(c.args[1]) * ")" end
-	else
-		res = ""
-		if c.args[1] in OPS
-			res = "(" * string(c.args[1]) * ")"
-		else
-			res = string(c.args[1])
-		end
-		res = res * " " * c.op * " "
-		if c.args[2].op in OPS
-			res = res * "(" * string(c.args[2]) * ")"
-		else  
-			res = res * string(c.args[2])
-		end
-		print(res)
-	end
-end
-
-function Base.show(io::IO, t::Clause)
-        printCNF(t, "")
-end
-"""
 
 function printTree(t::Clause, indent::String)
         if !(t.op in OPS)
@@ -224,35 +173,6 @@ function extract(symbol::String, arr::Array)
 	index = findall(x->x==symbol, arr)[1]
 	return arr[1:index-1], arr[index+1:end]
 end
-
-"""
-function toClause1(item)
-	if typeof(item) == Clause return item end
-	
-	# check for operators in the following precedence
-	# ==>, |, &, ~, strings and vars
-	if impliesTok in item
-		l, r = extract(impliesTok, item)
-		return Clause(impliesTok, toClause(l, r), [])
-	elseif orTok in item  
-		l, r = extract(orTok, item)
-		return Clause(orTok, toClause(l, r), [])
-	elseif andTok in item
-                l, r = extract(andTok, item)
-                return Clause(andTok, toClause(l, r), [])
-	elseif notTok in item
-                l, r = extract(notTok, item)
-                return Clause(notTok, toClause(l, r), [])
-	elseif typeof(item) == String
-		return Clause(item, [], [])
-	end
-
-	if length(item) == 1 return Clause(item[0], [], []) end
-	return Clause(item[0], toClause(item[1:end][0]), [])
-
-end
-"""
-
 
 function toClause(item)
 	#println("item $item")

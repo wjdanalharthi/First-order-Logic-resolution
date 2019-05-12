@@ -13,15 +13,14 @@ function KnowledgeBase(init::Array{Clause, 1})
 	kb = KnowledgeBase()
 	tell_cnf_terms(kb, init)
 	
-	#for i in init
-	#	tell(kb, i)
-	#end
 	return kb
 end
 
+"""
 function Base.show(io::IO, kb::KnowledgeBase)
 	printCNFClause(kb.clauses)
 end
+"""
 
 function tell_cnf_terms(kb, arr)
         for i in arr
@@ -55,22 +54,6 @@ function internalize_negation(c)
 	end
 	return c
 end
-
-"""
-function tell_cnf_terms(kb, arr)
-        for i in arr
-                if i.op == "~"
-                        clause = i.args[1]
-                        clase.negated = true
-                        tell(kb, clause)
-                elseif is_relation(i)
-                        tell(kb, [i])
-                else
-                        tell_cnf_terms(kb, i.args)
-                end
-        end
-end
-"""
 
 function remove_duplicates(arr)
 	no_dups = Array{Clause, 1}()
@@ -115,27 +98,6 @@ end
 function is_relation(c::Clause)
 	return !(c.op in OPS) && length(c.args) != 0 
 end
-
-"""
-function find_all_relations(c::Array, lib::Array{String, 1}=Array{String,1}())
-	if length(c) == 0
-		return lib
-	elseif is_relation(c[1])
-		if !(c[1].op in lib)
-			append!(lib, [string(c[1].op)])
-		end
-		return find_all_relations(c[2:end], lib)
-	elseif c[1].op == "~"
-		lib = find_all_relations([c[1]], lib)
-		return find_all_relations(c[2:end], lib)
-
-	end
-	#for i in c.args
-	#	lib = find_all_relations(i, lib) 
-	#end
-	return lib
-end
-"""
 
 function find_all_relations(c)
 	return [x.op for x in c]
