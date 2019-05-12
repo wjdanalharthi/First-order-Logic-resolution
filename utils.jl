@@ -31,3 +31,10 @@ struct Operator
 	args::Array
 end
 
+
+function verifyTheory(kb::KnowledgeBase, sg::Sigma)
+	""" Raise an error if symbols in the theory 
+	do not correspond to the signature."""
+
+end
+

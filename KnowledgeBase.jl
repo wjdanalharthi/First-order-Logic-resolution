@@ -16,11 +16,11 @@ function KnowledgeBase(init::Array{Clause, 1})
 	return kb
 end
 
-"""
+
 function Base.show(io::IO, kb::KnowledgeBase)
 	printCNFClause(kb.clauses)
 end
-"""
+
 
 function tell_cnf_terms(kb, arr)
         for i in arr

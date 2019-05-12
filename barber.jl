@@ -2,7 +2,7 @@ include("hw2.jl")
 
 
 clauses = ["(B(x) & ~S(y,y)) ==> S(x,y)", "~B(a) | ~S(b,b) | ~S(a,b)"]
-goal = "~B(t)"
+goal = "~B(T)"
 
 cnf_clauses = map(toCNF, map(toClause, map(lexer, clauses)))
 query = toClause(lexer(goal))
@@ -18,8 +18,8 @@ signature = Sigma(Constants([]), Functions([]), [Relation("Hound", 1),
 
 println("Knowledge Base")
 kb = KnowledgeBase(cnf_clauses)
-kb
+print(kb)
 
-#resolve(kb, query)
+resolve(kb, query)
 ~                                                                                                                                                           
 ~                          

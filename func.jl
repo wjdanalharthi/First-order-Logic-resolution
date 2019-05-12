@@ -251,12 +251,21 @@ end
 
 function MGU(c1::Array, k, c2::Array, m)
 	dict = Dict()
+	flip = false
 	for i=1:length(c1[k].args)
-		occurs_check, subt = MGUHelper(c1[k].args[i], c2[m].args[i])
+		result = MGUHelper(c1[k].args[i], c2[m].args[i])
+		#occurs_check, subt = MGUHelper(c1[k].args[i], c2[m].args[i])
+		flip = false
+		if length(result) == 2
+			occurs_check, subt = result
+		else
+			occurs_check, subt, flip = result
+		end
 		if subt != false
 			if occurs_check
+				# TODO FIX, why return here???
 				if occurs_checker(subt, c1::Array)
-					return subt
+					return subt, flip
 				else return () end
 			else
 				if length(subt) != 0
@@ -267,27 +276,29 @@ function MGU(c1::Array, k, c2::Array, m)
 			return ()
 		end
 	end
-	return dict
+	return dict, flip 
 end
 
+# TODO: NOT RELATION BUT FUNCTION (lowercase && len(args) != 0)
 function MGUHelper(c1::Clause, c2::Clause)
         if is_constant(c1) && is_constant(c2)
-        	println("cons & cons")
+        	#println("cons & cons")
 		#TODO what does success mean??
 		if c1.op == c2.op return false, (c1.op,c2.op)
                 else return false, false end
         end
         if is_constant(c1) && is_variable(c2)
-		println("cons & var")
-		return false, (c2.op,c1.op)
+		#println("cons & var")
+		# TODO flip clauses!
+		return false, (c2.op,c1.op), true
         end
         if is_constant(c1) && is_relation(c2)
-		println("cons & rel")
+		#println("cons & rel")
                 return false, false
         end
 
         if is_variable(c1) && is_constant(c2)
-		println("var & cons")
+		#println("var & cons")
 		return false, (c1.op,c2.op)
         end
         if is_variable(c1) && is_variable(c2)
@@ -298,25 +309,52 @@ function MGUHelper(c1::Clause, c2::Clause)
                 return false, (c1.op,c2.op)
         end
         if is_variable(c1) && is_relation(c2)
-		println("var & rel")
+		#println("var & rel")
                 # TODO occurance checker
 		return true, (c1.op,c2.op)
         end
 
         if is_relation(c1) && is_constant(c2)
-		println("rel & cons")
+		#println("rel & cons")
                 return false, false
         end
         if is_relation(c1) && is_variable(c2)
-		println("rel & var")
+		#println("rel & var")
                 # TODO occurance checker
-                return true, (c2.op,c1.op)
+		# TODO flip clauses!
+                return true, (c2.op,c1.op), true
         end
         if is_relation(c1) && is_relation(c2)
-		println("rel & rel")
+		#println("rel & rel")
                 if c1.op != c1.op return false end
                 return MGU(c1.args, c2.args) #TODO Fix
         end
+end
+
+function Base.show(io::IO, d::Dict)
+	#print("{")
+	s = "{"
+	for (k, v) in d
+		#print("$k=>$v, ")
+		s*="$k=>$v, "
+	end
+	s=s[1:end-2]
+	s*="}"
+	print(s)
+end
+
+function substitue(c, unifiable)
+	first = copyClause(c)
+	for (key, val) in unifiable
+		for w=1:length(first)
+			for j=1:length(first[w].args)
+				if first[w].args[j].op == key
+					first[w].args[j].op = val
+				end
+			end
+		end
+	end
+	return first
 end
 
 function resolveHelper(kb, query)
@@ -327,12 +365,12 @@ function resolveHelper(kb, query)
 	# if we can unify, do it and reduce
 	 unifiable = []
 	 for k=1:length(kb.clauses)                        # [Howl(x), ~Hound(x)]
-		 print("\n\n******* Current Clause  ")
-		 printCNFClause(kb.clauses[k])
+		 #print("\n\n******* Current Clause  ")
+		 #printCNFClause(kb.clauses[k])
 		 for m=1:length(kb.clauses[k])                 # Howl(x)
 			 
-			 print("\n\nCurrent Term ")
-			 printCNF(kb.clauses[k][m])
+			 #print("\n\nCurrent Term ")
+			 #printCNF(kb.clauses[k][m])
 
 			 clauses_indices = []
 			 if kb.clauses[k][m].negated
@@ -342,9 +380,9 @@ function resolveHelper(kb, query)
 			end
 
 			 for i in clauses_indices          # index of ~Has(w,t), ~Howl(t), ~LS(w)
-				 print("\nClause with Negated ")
-				 printCNF(kb.clauses[k][m]); print(" ==> ")
-				 printCNFClause(kb.clauses[i])
+				 #print("\nClause with Negated ")
+				 #printCNF(kb.clauses[k][m]); print(" ==> ")
+				 #printCNFClause(kb.clauses[i])
 
 				 # find ~Howl(x) at ith index
 				 rel_index = findall(x->x.op==kb.clauses[k][m].op, kb.clauses[i])[1]
@@ -354,16 +392,16 @@ function resolveHelper(kb, query)
 				#printCNF(c)
 				#printCNF(kb.clauses[i][rel_index])
 				
-				unifiable = MGU(kb.clauses[k], m, kb.clauses[i], rel_index)
+				unifiable, flip = MGU(kb.clauses[k], m, kb.clauses[i], rel_index)
 				if length(unifiable) == 0 
 					println("\n Not Unifiable")
 					continue
 				end 
 				#println("SUBSTITUION $unifiable")
 			
-				print("\nUnifying $(kb.clauses[k][m].op) args in: \n\t")
-        			printCNFClause(kb.clauses[k]); print("\n\t")
-        			printCNFClause(kb.clauses[i])
+				#print("\nUnifying $(kb.clauses[k][m].op) args in: \n\t")
+        			#printCNFClause(kb.clauses[k]); print("\n\t")
+        			#printCNFClause(kb.clauses[i])
 
 				# so substitue and get remaining and add to KB
 				# first find index of c in kb.clauses[i]
@@ -381,7 +419,9 @@ function resolveHelper(kb, query)
 				end
 				"""
 				# TODO : DEEP COPY 
+				"""
                                 first = copyClause(kb.clauses[k])
+				second = copyClause(kb.clauses[i])
                                 for (key, val) in unifiable
                                 for w=1:length(first)
                                         for j=1:length(first[w].args)
@@ -390,33 +430,110 @@ function resolveHelper(kb, query)
                                                 end
                                         end
                                 end
-                                end
+                                end"""
 
-				print("\nUnified $(kb.clauses[k][m].op) by $unifiable\n\t")
-				#printCNFClause(kb.clauses[k]); print("\n\t")
-                                printCNFClause(first); print("\n\t")
-				printCNFClause(kb.clauses[i])
+				substituted = nothing
+				if flip
+					substituted = substitue(copyClause(kb.clauses[i]), unifiable)
+				else
+					substituted = substitue(copyClause(kb.clauses[k]), unifiable)
+				end
+
+				#print("\nUnified $(kb.clauses[k][m].op) by $unifiable\n\t")
+                                #printCNFClause(first); print("\n\t")
+				#printCNFClause(kb.clauses[i])
 
 				# get remaining
-				# TODO : DEEP COPY 
-				union = append!(copyClause(first), copyClause(kb.clauses[i]))
+				# TODO : DEEP COPY
+				union = nothing
+				if flip
+					union = append!(copyClause(substituted), copyClause(kb.clauses[k]))
+				else
+					union = append!(copyClause(substituted), copyClause(kb.clauses[i]))
+				end
 
 				# TODO do we need to specify the negated flag too?
-				indices = findall(x->x.op==first[m].op&&allEqual(x.args,first[m].args), union)
+				#println("UNION")
+				#println(union)
+
+				#println("INDICES OF $(substituted[m])")
+				
+				indices = nothing
+				if flip
+					indices = findall(x->x.op==substituted[rel_index].op&&allEqual(x.args,substituted[rel_index].args), union)
+				else
+					indices = findall(x->x.op==substituted[m].op&&allEqual(x.args,substituted[m].args), union)
+				end
+					
+				#println(indices)
 				deleteat!(union, indices)
-			
-				print("\nResult Clause: \n\t")
-				printCNFClause(union)
-				println()
+				#println("AFTER DEL")
+				#println(union)
+
+				#print("\nResult Clause: \n\t")
+				#printCNFClause(union)
+				#println()
 				if length(union) == 0
+                                                 print("\n\n******* Current Clause  ")
+                                                  printCNFClause(kb.clauses[k])
+                                                 print("\n\nCurrent Term ")
+                                                printCNF(kb.clauses[k][m])
+                                                print("\nClause with Negated ")
+                                                printCNF(kb.clauses[k][m]); print(" ==> ")
+                                                printCNFClause(kb.clauses[i])
+
+                                                print("\nUnifying $(kb.clauses[k][m].op) args in: \n\t[$k]  ")
+                                                printCNFClause(kb.clauses[k]); print("\n\t[$i]  ")
+                                                printCNFClause(kb.clauses[i])
+
+                                                print("\nUnified by ")
+                                                print("$unifiable");print("\n\t")
+                                                #printCNFClause(kb.clauses[k]); print("\n\t")
+                                                if !flip
+                                                        printCNFClause(substituted); print("\n\t")
+                                                        printCNFClause(kb.clauses[i])
+                                                else
+                                                        printCNFClause(kb.clauses[k]); print("\n\t")
+                                                        printCNFClause(substituted)
+                                                end
+
+                                                print("\nResult Clause: \n\t[$(length(kb.clauses)+1)]  ")
+                                                printCNFClause(union)
+                                                println()
+                                                
 					println("Union Clause is empty!!")
 					return true
 				else
 					flag = tell(kb, union)
-					if flag 
+					if flag
+                                                 print("\n\n******* Current Clause  ")
+                                                  printCNFClause(kb.clauses[k])
+                                                 print("\n\nCurrent Term ")
+                                                printCNF(kb.clauses[k][m])
+						print("\nClause with Negated ")
+                                 		printCNF(kb.clauses[k][m]); print(" ==> ")
+                                 		printCNFClause(kb.clauses[i])
+
+						print("\nUnifying $(kb.clauses[k][m].op) args in: \n\t[$k]  ")
+						printCNFClause(kb.clauses[k]); print("\n\t[$i]  ")
+                                		printCNFClause(kb.clauses[i])
+						
+						print("\nUnified by ")
+						print("$unifiable");print("\n\t")
+                		                #printCNFClause(kb.clauses[k]); print("\n\t")
+                                		if !flip
+                                                        printCNFClause(substituted); print("\n\t")
+                                                        printCNFClause(kb.clauses[i])
+						else
+							printCNFClause(kb.clauses[k]); print("\n\t")
+                                			printCNFClause(substituted)
+						end
+						print("\nResult Clause: \n\t[$(length(kb.clauses))]  ")
+                		                printCNFClause(union)
+                               			println()
+						
 						println("\n ADDED TO KB")
-						#return kb
-						printCNFClause(kb.clauses)
+						printCNFClause(kb.clauses[end])
 						println("\n")
 						#dict = index_clauses(kb)
 						#else continue end
@@ -445,11 +562,16 @@ function resolve(kb, query)
 			println("\nEntails")
 			return true
 		else
-			println("\nFailed")
+			sort!(kb.clauses, by=length)
+			#println("\nFailed")
 			#return false
 		end
 		#println(kb.clauses)
 	end
 	println("\nDoes Not entail")
 	return false
+end
+
+function printResolution()
+
 end

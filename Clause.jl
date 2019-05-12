@@ -36,8 +36,8 @@ function Clause(op::String)
 end
 
 function equal(e1, e2)
-	println("first $e1")
-	println("second $e2")
+	#println("first $e1")
+	#println("second $e2")
 	if typeof(e1) == Array{Any, 1} && typeof(e2) == Array{Any, 1}
 		return true
 	elseif typeof(e1) == Array{Clause, 1} && typeof(e2) == Array{Clause, 1}
@@ -59,9 +59,10 @@ function equal(e1, e2)
 	end
 end
 
-function inArray(a1, c)
-	for i in a1
-		if equal(c, i) return true end
+function inArray(a2, c::Clause)
+	for j in a2
+		if equal(c, j) 
+		return true end
 	end
 	return false
 end
@@ -69,8 +70,21 @@ end
 function allEqual(a1::Array, a2::Array)
 	if length(a1) != length(a2) return false end
 	for i in a1
-		if !inArray(a2, i) return false end
+		if inArray(a2, i) 
+			continue
+		else 
+			return false
+		end
 	end
+
+        for i in a2
+                if inArray(a1, i)
+                        continue
+                else 
+                        return false
+                end
+        end
+
 	return true
 end
 
@@ -114,6 +128,9 @@ function printCNF(t::Any, indent::String="")
 	#	printCNF(t.args, indent)
 	#	print(")")
 	if !(t.op in OPS)
+		if length(t.args) == 0
+			print("$(t.op)")
+		else
 		if t.negated
 			print("~")
 		end
@@ -122,6 +139,7 @@ function printCNF(t::Any, indent::String="")
                         print("$(t.args[i].op),")
                 end
                 print("$(t.args[end].op))")
+		end
         else
                 #print(" $(t.op) ")
                 #for i=1:length(t.args)
