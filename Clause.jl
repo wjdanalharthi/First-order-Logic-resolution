@@ -19,10 +19,11 @@ OPS = [impliesTok, andTok, orTok, notTok]
 # =============================== Clause ============================
 mutable struct Clause
         op::String
-	args
+	args #::Array{Clause, 1}
 	negated::Bool
 end
 
+"""
 function Clause(op::String, info::Array)
 	args = []
 	if length(info) > 0
@@ -30,26 +31,30 @@ function Clause(op::String, info::Array)
 	end
 	return Clause(op, args, false)
 end
+"""
 
-
-function Clause(op::String, info::Array)
-        args = []
+function Clause(op::String, info)
+	args = Array{Clause, 1}()
         if length(info) > 0
-                args = [toClause(i) for i in info]
+		args = Array{Clause, 1}([toClause(i) for i in info])
         end
-        return Clause(op, args, false)
+	return Clause(op, Array{Clause, 1}(args), false)
 end
 
+"""
 function Clause(op::String, info::String)
-        args = [toClause(i) for i in info]
+	args = Array{Clause, 1}([toClause(i) for i in info])
         return Clause(op, args, false)
 end
+"""
 
 function Clause(op::String)
-	return Clause(op, [], false)
+	return Clause(op, Array{Clause, 1}(), false)
 end
 
 function equal(e1, e2)
+	println("first $e1")
+	println("second $e2")
 	if typeof(e1) == Array{Any, 1} && typeof(e2) == Array{Any, 1}
 		return true
 	elseif typeof(e1) == Array{Clause, 1} && typeof(e2) == Array{Clause, 1}
@@ -86,6 +91,24 @@ function allEqual(a1::Array, a2::Array)
 	return true
 end
 
+# WARNING 
+# DEEP COPIES ONLY VARIABLE & CONSTANT ARGS
+function copyClause(c::Clause)
+	new_c = Clause(c.op)
+	new_c.negated = c.negated
+	for i in c.args
+		append!(new_c.args, Array{Clause, 1}([Clause(i.op)]))
+	end
+	return new_c
+end
+
+function copyClause(c::Array{Clause, 1})
+	new_arr = Array{Clause, 1}()
+	for i in c
+		append!(new_arr, Array{Clause, 1}([copyClause(i)]))
+	end
+	return new_arr
+end
 
 """
 function Base.show(io::IO, c::Clause)
@@ -202,6 +225,7 @@ function extract(symbol::String, arr::Array)
 	return arr[1:index-1], arr[index+1:end]
 end
 
+"""
 function toClause1(item)
 	if typeof(item) == Clause return item end
 	
@@ -227,7 +251,7 @@ function toClause1(item)
 	return Clause(item[0], toClause(item[1:end][0]), [])
 
 end
-
+"""
 
 
 function toClause(item)

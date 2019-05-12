@@ -424,6 +424,7 @@ function resolveHelper(kb, query)
 				# first find index of c in kb.clauses[i]
 				
 				#index = findall(x->x.op==term.op, kb.clauses[i])[1]
+				"""
 				for (key, val) in unifiable
 				for w=1:length(kb.clauses[k])
 					for j=1:length(kb.clauses[k][w].args)
@@ -433,13 +434,30 @@ function resolveHelper(kb, query)
 					end
 				end
 				end
+				"""
+				# TODO : DEEP COPY 
+                                first = copyClause(kb.clauses[k])
+                                for (key, val) in unifiable
+                                for w=1:length(first)
+                                        for j=1:length(first[w].args)
+                                                if first[w].args[j].op == key
+                                                        first[w].args[j].op = val
+                                                end
+                                        end
+                                end
+                                end
+
 				print("\nUnified $(kb.clauses[k][m].op) by $unifiable\n\t")
-				printCNFClause(kb.clauses[k]); print("\n\t")
-                                printCNFClause(kb.clauses[i])
+				#printCNFClause(kb.clauses[k]); print("\n\t")
+                                printCNFClause(first); print("\n\t")
+				printCNFClause(kb.clauses[i])
 
 				# get remaining
-				union = append!(copy(kb.clauses[k]), copy(kb.clauses[i]))
-				indices = findall(x->x.op==kb.clauses[k][m].op&&allEqual(x.args,kb.clauses[k][m].args), union)
+				# TODO : DEEP COPY 
+				union = append!(copyClause(first), copyClause(kb.clauses[i]))
+
+				# TODO do we need to specify the negated flag too?
+				indices = findall(x->x.op==first[m].op&&allEqual(x.args,first[m].args), union)
 				deleteat!(union, indices)
 			
 				print("\nResult Clause: \n\t")
@@ -453,6 +471,8 @@ function resolveHelper(kb, query)
 					if flag 
 						println("\n ADDED TO KB")
 						#return kb
+						printCNFClause(kb.clauses)
+						println("\n")
 						#dict = index_clauses(kb)
 						#else continue end
 						return false

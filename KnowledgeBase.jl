@@ -24,20 +24,16 @@ function Base.show(io::IO, kb::KnowledgeBase)
 end
 
 function tell_cnf_terms(kb, arr)
-	println("Starting with $arr")
         for i in arr
 		if i.op == "|"
-			println("found OR")
 			c = internalize_negation(i.args)
 			tell(kb, c)
 		elseif is_relation(i)
-			println("found REL i.op")
 			tell(kb, [i])
 		elseif i.op == "~"
 			c = internalize_negation(i.args[1])
 			tell(kb, [c])
                 else
-			println("Adding $(i.args[1])")
 			tell(kb, [i.args[1]])
 			tell_cnf_terms(kb, i.args[2:end])
                 end
@@ -77,7 +73,7 @@ end
 """
 
 function remove_duplicates(arr)
-        no_dups = []
+	no_dups = Array{Clause, 1}()
         for i in arr
                 #rem = append!(copy(predicates)[1:i-1], copy(predicates)[i+1:end]) 
                 if !inArray(no_dups, i)

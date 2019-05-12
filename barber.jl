@@ -18,7 +18,7 @@ signature = Sigma(Constants([]), Functions([]), [Relation("Hound", 1),
 
 println("Knowledge Base")
 kb = KnowledgeBase(cnf_clauses)
-
+kb
 
 #resolve(kb, query)
 ~                                                                                                                                                           
