@@ -67,6 +67,14 @@ function inArray(a2, c::Clause)
 	return false
 end
 
+function inArray(a, s::String)
+        for j in a
+                if j == s 
+                return true end
+        end
+        return false
+end
+
 function allEqual(a1::Array, a2::Array)
 	if length(a1) != length(a2) return false end
 	for i in a1

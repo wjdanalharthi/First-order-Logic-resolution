@@ -205,7 +205,6 @@ function unify(a1::Array, a2::Array, substitutions::Dict)
         end
     end
 end
-"""
 
 function is_symbol(s::String)
         if length(s) == 0
@@ -218,17 +217,22 @@ end
 function is_variable(v::String)
         return is_symbol(v) && Base.islowercase(v[1])
 end
+"""
 
 function is_variable(c::Clause)
-	return length(c.args) == 0 && Base.islowercase(c.op[1])
+	return !(c.op in OPS) && length(c.args) == 0 && Base.islowercase(c.op[1])
 end
 
 function is_constant(c::Clause)
-        return length(c.args) == 0 && Base.isuppercase(c.op[1])
+        return !(c.op in OPS) && length(c.args) == 0 && Base.isuppercase(c.op[1])
 end
 
 function is_relation(c::Clause)
-        return !(c.op in OPS) && length(c.args) != 0
+        return !(c.op in OPS) && length(c.args) != 0 && Base.isuppercase(c.op[1])
+end
+
+function is_function(c::Clause)
+	return !(c.op in OPS) && length(c.args) != 0 && Base.islowercase(c.op[1])
 end
 
 # TODO COMPLETE
