@@ -3,11 +3,11 @@ var_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
 func_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)]; 
 cons_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
 mutable struct KnowledgeBase
-        clauses::Array{Array{Clause,1},1}
+	clauses::Array{Tuple{Int32, Array{Clause,1}},1}
 end
 
 function KnowledgeBase()
-	return KnowledgeBase(Array{Array{Clause,1},1}())
+	return KnowledgeBase(Array{Tuple{Int32,Array{Clause,1}},1}(), Dict([]))
 end
 
 function KnowledgeBase(init::Array{Clause, 1})
@@ -18,7 +18,7 @@ function KnowledgeBase(init::Array{Clause, 1})
 end
 
 function Base.show(io::IO, kb::KnowledgeBase)
-	printCNFClause(kb.clauses)
+	printCNFClause([x[2] for x in kb.clauses])
 end
 
 """
@@ -110,7 +110,7 @@ end
 
 function exists_in_kb(kb, arr)
         for i in kb.clauses
-                if allEqual(i, arr) return true end
+		if allEqual(i[2], arr) return true end
         end
 	return false
 end
@@ -123,17 +123,9 @@ function tell(kb::KnowledgeBase, clauses::Array)
 	clauses = remove_duplicates(clauses)
 	if exists_in_kb(kb, clauses) return false end
 
-	append!(kb.clauses, [clauses])
+	append!(kb.clauses, [(length(kb.clauses)+1, clauses)])
+	kb.indices[clauses]=length(kb.clauses)
 	return true
-end
-
-function retract(kb::KnowledgeBase, c::Clause)
-    for (index, item) in enumerate(kb.clauses)
-        if (item == c)
-            deleteat!(kb.clauses, index);
-            break;
-        end
-    end
 end
 
 function is_relation(c::Clause)
@@ -173,7 +165,7 @@ end
 function index_clauses(kb::KnowledgeBase)
 	d = Dict()
 	for i in kb.clauses
-		all_rels = find_all_relations(i)
+		all_rels = find_all_relations(i[2])
 		for j in all_rels
 			if !haskey(d, j)
 				d[j] = Array{Int32, 1}()
@@ -184,7 +176,7 @@ function index_clauses(kb::KnowledgeBase)
 	
 	for key in keys(d)
 		for i=1:length(kb.clauses)
-			flag, c = look_for_relation(kb.clauses[i], key)
+			flag, c = look_for_relation(kb.clauses[i][2], key)
 			if flag
 				if !c.negated
 					append!(d[key], i)
@@ -197,25 +189,3 @@ function index_clauses(kb::KnowledgeBase)
 
 	return d
 end
-
-function standardize_variables(c::Clause, ref::AbstractVector,
-			      dict::Union{Nothing, Dict})
-	if typeof(dict) <: Nothing
-		dict = Dict()
-	end
-
-	if is_variable(c.op)
-		if haskey(dict, c)
-			return dict[c]
-		else
-			ref[2] = iterate(ref[1], ref[2])[2]
-			new_var = Clause("v_$(counter[2])")
-			dict[c] = new_var
-			return new_var
-		end
-	else
-		return Clause(c.op,
-			      [standardize_variables(arg, ref, dict) for arg in c.args])
-	end
-end
-

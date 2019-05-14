@@ -73,7 +73,7 @@ function get_info(kb::KnowledgeBase,
 						     "functions"=>Set{String}(),
 						     "relations"=>Set{Tuple{String, Int32}}()]))
 	for clause in kb.clauses
-		dict = get_info(clause, dict)
+		dict = get_info(clause[2], dict)
 	end
 	return dict
 end

@@ -141,24 +141,17 @@ function skolemize(q, foralls=[], dict::Dict=Dict([]))
 						      q.negated)
 				end
 			elseif q.op in OPS
-		              	if q.op == "&" #&& q.args[1].op == "&"
-                	        	println("FOUND ONE: $q")
-                		end
-
 				#new_args = skolemize(q.args, foralls, dict)
 				if q.op in ["|", "&"] && typeof(q.args[1]) == Quantifier && q.args[1].args.op in ["|", "&"]
 						#cl.args[1].op == "|"
-                                                println("2nd FOUND ONE $q");println()
 						#q = copyClause(q.args[1])
 						rem = copyClause(q.args[2:end])
 						rem = [copyClause(x) for x in q.args[2:end]]
 						rem = q.args[2:end]
-						println("Remaining!: $rem");println()
 						append!(rem, q.args[1].args.args)
 
 						y= Clause(q.op, rem)
 						k = Quantifier(q.args[1].op, q.args[1].var, y)
-						println("HACK $k")
 						return skolemize(k)
 				end
 				return Clause(q.op,
@@ -374,8 +367,8 @@ function printCNFClause(c::Array{Array{Clause,1},1})
 		return
         end
 	for arr in c
-		printCNFClause(arr)
-		println("\n")
+		print("\t");printCNFClause(arr)
+		print("\n")
 	end
 end
 

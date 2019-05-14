@@ -9,7 +9,6 @@ clauses = ["(B(x) & ~S(y,y)) ==> S(x,y)",
 	   "~B(a) | ~S(b,b) | ~S(a,b)"]
 clauses = ["∀ x(∀ y((B(x) & ~S(y,y)) ==> S(x,y)))",
 	   "∀ x(∀ y(~B(a) | ~S(b,b) | ~S(a,b)))"]
-	   #"~(∃ x(∃ y(B(x) & ~S(y,y) & ~S(x,y)))"]
 cnf_clauses = map(skolemize, map(toCNF, map(toClause, map(lexer, clauses))))
 
 kb = KnowledgeBase(cnf_clauses)
@@ -23,4 +22,4 @@ query = "~B(T)"
 query = "∀ x(~B(x))"
 query = toClause(lexer(query))
 
-#resolve(kb, query)
+resolve(kb, query)
