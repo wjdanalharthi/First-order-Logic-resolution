@@ -1,17 +1,5 @@
 
-"""
-struct Constants
-	cons::Array
-end
-struct Functions
-	func::Array
-end
-struct Relation
-	name::String
-	arity::Int
-end
-"""
-
+# =========================== Sigma
 struct Sigma
 	C::Set{String}
 	F::Set{String}
@@ -35,24 +23,7 @@ function Sigma(C::Array{String, 1}, F::Array{Any, 1}, R::Array{Tuple{String,Int6
         return Sigma(Set{String}(C), Set{String}(), Set{Tuple{String, Int32}}(R) )
 end
 
-function Base.show(io::IO, sigma::Sigma)
-	println("Signature");print("\t")
-	print("C: ");print(sigma.C);print("\n\t")
-	print("F: ");print(sigma.F);print("\n\t")
-	print("R: ");print(sigma.R);print("\n\t")
-end
-
-function Base.show(io::IO, s::Set)
-	r = "("
-	for i in s
-		r*="$i, "
-	end
-	if length(r) != 1 r = r[1:end-2] end
-	r*=")"
-	print(r)
-
-end
-
+# =========================== Quantifier
 mutable struct Quantifier
 	op::String
 	var::String
@@ -63,11 +34,45 @@ function Quantifier(op::String, var::String)
 	return Quantifier(op, var, [])
 end
 
-struct Operator
-	op::String
-	args::Array
+# ========================== Clause
+mutable struct Clause
+        op::String
+        args
+        negated::Bool
 end
 
+function Clause(op::String, info)
+        args = Array{Clause, 1}()
+        if length(info) > 0
+                args = [toClause(i) for i in info]
+        end
+        return Clause(op, args, false)
+end
+
+function Clause(op::String)
+        return Clause(op, Array{Clause, 1}(), false)
+end
+
+Base.:(==)(e1::Clause, e2::Clause) = (e1.op == e2.op) && allEqual(e1.args, e2.args)
+Base.:(==)(e1::Array{Clause, 1}, e2::Array{Clause, 1}) = allEqual(e1, e2)
+
+
+# ========================== Knowledge Base
+mutable struct KnowledgeBase
+        clauses::Array{Tuple{Int32, Array{Clause,1}},1}
+end
+
+function KnowledgeBase()
+        return KnowledgeBase(Array{Tuple{Int32,Array{Clause,1}},1}())
+end
+
+function KnowledgeBase(init::Array{Clause, 1})
+        kb = KnowledgeBase()
+        tell_cnf_terms(kb, init)
+        return kb
+end
+
+# ========================== Testing KB and Signature
 function get_info(kb::KnowledgeBase, 
 		  dict=Dict{String,Set{Any}}(["constants"=>Set{String}(),
 						     "functions"=>Set{String}(),

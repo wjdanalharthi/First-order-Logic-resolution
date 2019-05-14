@@ -1,34 +1,26 @@
-include("Clause.jl")
-var_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
-func_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)]; 
-cons_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
-mutable struct KnowledgeBase
-	clauses::Array{Tuple{Int32, Array{Clause,1}},1}
-end
 
-function KnowledgeBase()
-	return KnowledgeBase(Array{Tuple{Int32,Array{Clause,1}},1}())
-end
+# ================================ Adding Clauses to KB
 
-function KnowledgeBase(init::Array{Clause, 1})
-	kb = KnowledgeBase()
-	tell_cnf_terms(kb, init)
-	
-	return kb
-end
+function tell(kb::KnowledgeBase, clauses::Array)
+        if length(clauses) == 0
+                return true
+        end
 
-function Base.show(io::IO, kb::KnowledgeBase)
-	printCNFClause([x[2] for x in kb.clauses])
+        clauses = remove_duplicates(clauses)
+        if exists_in_kb(kb, clauses) return false end
+
+        append!(kb.clauses, [(length(kb.clauses)+1, clauses)])
+        return true
 end
 
 function tell_cnf_terms(kb, arr)
         for i in arr
-		if i.op == "|"
+		if i.op == orTok
 			c = internalize_negation(i.args)
 			tell(kb, c)
 		elseif is_relation(i)
 			tell(kb, [i])
-		elseif i.op == "~"
+		elseif i.op == notTok
 			c = internalize_negation(i.args[1])
 			tell(kb, [c])
                 else
@@ -45,7 +37,7 @@ end
 
 function internalize_negation(c)
 	for j=1:length(c)
-		if c[j].op == "~"
+		if c[j].op == notTok
 			c[j] = c[j].args[1]
 			c[j].negated = true
 		end
@@ -70,22 +62,7 @@ function exists_in_kb(kb, arr)
 	return false
 end
 
-function tell(kb::KnowledgeBase, clauses::Array)
-	if length(clauses) == 0
-		return true
-	end
-
-	clauses = remove_duplicates(clauses)
-	if exists_in_kb(kb, clauses) return false end
-
-	append!(kb.clauses, [(length(kb.clauses)+1, clauses)])
-	return true
-end
-
-function is_relation(c::Clause)
-	return !(c.op in OPS) && length(c.args) != 0 
-end
-
+# ================================ Indexing KB Clauses
 function find_all_relations(c)
 	return [x.op for x in c]
 end
