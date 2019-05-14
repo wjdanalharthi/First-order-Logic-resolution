@@ -172,85 +172,6 @@ function distribute_and_over_or(e::Clause)
     end
 end
 
-function occurrence_check(key::Clause, x, substitutions::Dict)
-    if (key == x)
-        println("occurrence_check(::Expression, ::Union{Tuple, Vector}, ::Dict) returned true!!!");
-        return true;
-    else
-        if (length(collect(true for element in x if (occurrence_check(key, element, substitutions)))) == 0)
-            return false;
-        else
-            return true;
-        end
-    end
-end
-
-"""
-function extend(dict::Dict, key, val)
-    local new_dict::Dict = copy(dict);
-    new_dict[key] = val;
-    return new_dict;
-end
-
-function unify_variable(key, x, substitutions::Dict)
-    if (key in keys(substitutions))
-        return unify(substitutions[key], x, substitutions);
-    elseif (x in keys(substitutions))
-        return unify(key, substitutions[x], substitutions);
-    #elseif (occurrence_check(key, x, substitutions))
-    #	    return Dict([]);
-    else
-        return extend(substitutions, key, x);
-    end
-end
-
-function unify(e1::String, e2::String, substitutions::Dict)
-
-    if (e1 == e2)
-        return substitutions;
-    else
-	    return Dict([]);
-    end
-end
-
-function unify(e1::Clause, e2::Clause, substitutions::Dict)
-    #if (e1.op == e2.op) && (e1.args == e2.args)
-    if equal(e1, e2)
-    	return substitutions;
-    elseif is_variable(e1)
-        return unify_variable(e1, e2, substitutions);
-    elseif is_variable(e2)
-        return unify_variable(e2, e1, substitutions);
-    else
-        return unify(e1.args, e2.args, unify(e1.op, e2.op, substitutions));
-    end
-end
-
-function unify(a1::Array, a2::Array, substitutions::Dict)
-    if (a1 == a2)
-        return substitutions;
-    else
-        if (length(a1) == length(a2))
-            return unify(a1[2:end], a2[2:end], unify(a1[1], a2[1], substitutions))
-        else
-		return Dict([])
-        end
-    end
-end
-
-function is_symbol(s::String)
-        if length(s) == 0
-                return false
-        else
-                return Base.isletter(s[1])
-        end
-end
-
-function is_variable(v::String)
-        return is_symbol(v) && Base.islowercase(v[1])
-end
-"""
-
 function is_variable(c::Clause)
 	return !(c.op in OPS) && length(c.args) == 0 && Base.islowercase(c.op[1])
 end
@@ -274,18 +195,6 @@ function occurs(var::String, args::Array)
 	for arg in args
 		if arg.op == var return true end
 	end
-	"""
-	v = [x for x in values(subt)][1]
-	for c in c1
-		if is_variable(c)
-			if c.op == v return false
-			else return true end
-		elseif is_relation(c)
-
-		elseif is_constant(c)
-		end
-	end
-	"""
 	return false
 end
 
@@ -298,7 +207,6 @@ function MGU(c1::Array, k, c2::Array, m)
 	flip = false
 	for i=1:length(c1[k].args)
 		result = MGUHelper(c1[k].args[i], c2[m].args[i])
-		#occurs_check, subt = MGUHelper(c1[k].args[i], c2[m].args[i])
 		flip = false
 		if length(result) == 2
 			occurs_check, subt = result
@@ -316,7 +224,6 @@ function MGU(c1::Array, k, c2::Array, m)
 	return dict, flip 
 end
 
-# TODO: NOT RELATION BUT FUNCTION (lowercase && len(args) != 0)
 function MGUHelper(c1::Clause, c2::Clause)
 	#println("$(c1.op), $(c2.op)")
         if is_constant(c1) && is_constant(c2)
@@ -376,10 +283,8 @@ function MGUHelper(c1::Clause, c2::Clause)
 end
 
 function Base.show(io::IO, d::Dict)
-	#print("{")
 	s = "{"
 	for (k, v) in d
-		#print("$k=>$v, ")
 		s*="$k=>$v, "
 	end
 	s=s[1:end-2]
@@ -471,12 +376,7 @@ function resolveHelper(kb, query)
 	# if we can unify, do it and reduce
 	 unifiable = []
 	 for k=1:length(kb.clauses)                        # [Howl(x), ~Hound(x)]
-		 #print("\n\n******* Current Clause  ")
-		 #printCNFClause(kb.clauses[k])
 		 for m=1:length(kb.clauses[k][2])                 # Howl(x)
-			 
-			 #print("\n\nCurrent Term ")
-			 #printCNF(kb.clauses[k][m])
 
 			 clauses_indices = []
 			 if kb.clauses[k][2][m].negated
@@ -519,21 +419,19 @@ function resolveHelper(kb, query)
 				deleteat!(union, indices)
 				
 				if length(union) == 0
-                                                print("$(kb.clauses[i][1]),$(kb.clauses[k][1])")
-                                                print("   | ")
-                                                print("$(printUnifiers(unifiable)) \n\t")
-                                                print("  [$(length(kb.clauses))] ");printCNFClause(union);println()
-                                                
+                                                printResolution("$(kb.clauses[i][1]),$(kb.clauses[k][1])",
+                                                                "$(printUnifiers(unifiable))",
+                                                                "$(length(kb.clauses))",
+                                                                union)
 						println("Reached an empty clause.")
 					return true
 				else
 					flag = tell(kb, union)
 					if flag
-						print("$(kb.clauses[i][1]),$(kb.clauses[k][1])")
-						print("   | ")
-						print("$(printUnifiers(unifiable)) \n\t")
-						print("  [$(length(kb.clauses))] ");printCNFClause(union);println()
-						println("-----------------------------------")
+						printResolution("$(kb.clauses[i][1]),$(kb.clauses[k][1])",
+								"$(printUnifiers(unifiable))",
+								"$(length(kb.clauses))",
+								union)
 						return false
 					end
 				end
@@ -543,12 +441,27 @@ function resolveHelper(kb, query)
 	return false
 end
 
+function printResolution(nums, theta, c_num, new_c)
+	n = 6
+	len = length(nums)
+	rem = n-len
+	spaces = repeat(" ", rem)
+	print(nums);print("$(spaces) | ");print("$theta")
+	
+	n = 25
+	len = length(theta)
+	rem = n-len
+	spaces = repeat(" ", rem)
+	print("$spaces[$c_num] ");printCNFClause(new_c);println()
+	println("$(repeat("-", 45))")
+end
+
 function resolve(kb, query)
 	println("------------------ Starting Resolution ------------------\n")
 
 	tell_cnf_terms(kb, [skolemize(negate(toCNF(query)))])
-	println("Rule #  |   θ ")
-	println("-----------------------------------")
+	println("Rule # |           θ $(repeat(" ", 10))|   New Rule")
+	println("$(repeat("-", 45))")
 	while true
 		flag = resolveHelper(kb, query)
 		if flag

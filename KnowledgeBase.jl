@@ -7,7 +7,7 @@ mutable struct KnowledgeBase
 end
 
 function KnowledgeBase()
-	return KnowledgeBase(Array{Tuple{Int32,Array{Clause,1}},1}(), Dict([]))
+	return KnowledgeBase(Array{Tuple{Int32,Array{Clause,1}},1}())
 end
 
 function KnowledgeBase(init::Array{Clause, 1})
@@ -21,51 +21,6 @@ function Base.show(io::IO, kb::KnowledgeBase)
 	printCNFClause([x[2] for x in kb.clauses])
 end
 
-"""
-#TODO AND terms!!!!!!!
-function get_terms(arr, terms=[])
-	for i in arr
-		if i.op == orTok
-			terms = get_terms(internalize_negation(i.args), terms)
-		elseif is_relation(i)
-			append!(terms, [i])
-
-		elseif i.op == notTok
-			 c = internalize_negation(i.args[1])
-			 append!(terms, [c])
-		elseif i.op == andTok
-			#terms = get_terms([i.args[1]], terms)
-			ands = []
-			for a in i.args
-				append!(get_terms([a]), ands)
-				append!(terms, [[ands]])
-			end
-			#get_terms(i.args, terms)
-		else
-			error("get_terms()")
-			end
-	end
-	return terms
-end
-
-
-function get_terms(arr, terms=Dict(["or"=>[], "and"=>[]]))
-	if length(arr) == 0
-		return terms
-	else
-		if is_relation(arr[1])
-			return arr[1] 
-		elseif arr[1].op == orTok
-		end
-	end
-end
-
-function tell_cnf_terms(kb, arr)
-	lst = copyClause(get_terms(arr))
-	println(lst)
-	tell(kb, lst)
-end
-"""
 function tell_cnf_terms(kb, arr)
         for i in arr
 		if i.op == "|"
@@ -124,7 +79,6 @@ function tell(kb::KnowledgeBase, clauses::Array)
 	if exists_in_kb(kb, clauses) return false end
 
 	append!(kb.clauses, [(length(kb.clauses)+1, clauses)])
-	kb.indices[clauses]=length(kb.clauses)
 	return true
 end
 
