@@ -1,6 +1,7 @@
 include("Clause.jl")
-get_new_variable = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
-
+var_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
+func_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)]; 
+cons_counter = [Base.Iterators.countfrom(BigInt(1)), BigInt(-1)];
 mutable struct KnowledgeBase
         clauses::Array{Array{Clause,1},1}
 end
@@ -16,12 +17,55 @@ function KnowledgeBase(init::Array{Clause, 1})
 	return kb
 end
 
-
 function Base.show(io::IO, kb::KnowledgeBase)
 	printCNFClause(kb.clauses)
 end
 
+"""
+#TODO AND terms!!!!!!!
+function get_terms(arr, terms=[])
+	for i in arr
+		if i.op == orTok
+			terms = get_terms(internalize_negation(i.args), terms)
+		elseif is_relation(i)
+			append!(terms, [i])
 
+		elseif i.op == notTok
+			 c = internalize_negation(i.args[1])
+			 append!(terms, [c])
+		elseif i.op == andTok
+			#terms = get_terms([i.args[1]], terms)
+			ands = []
+			for a in i.args
+				append!(get_terms([a]), ands)
+				append!(terms, [[ands]])
+			end
+			#get_terms(i.args, terms)
+		else
+			error("get_terms()")
+			end
+	end
+	return terms
+end
+
+
+function get_terms(arr, terms=Dict(["or"=>[], "and"=>[]]))
+	if length(arr) == 0
+		return terms
+	else
+		if is_relation(arr[1])
+			return arr[1] 
+		elseif arr[1].op == orTok
+		end
+	end
+end
+
+function tell_cnf_terms(kb, arr)
+	lst = copyClause(get_terms(arr))
+	println(lst)
+	tell(kb, lst)
+end
+"""
 function tell_cnf_terms(kb, arr)
         for i in arr
 		if i.op == "|"
@@ -44,7 +88,6 @@ function internalize_negation(c::Clause)
 	return c
 end
 
-
 function internalize_negation(c)
 	for j=1:length(c)
 		if c[j].op == "~"
@@ -58,7 +101,6 @@ end
 function remove_duplicates(arr)
 	no_dups = Array{Clause, 1}()
         for i in arr
-                #rem = append!(copy(predicates)[1:i-1], copy(predicates)[i+1:end]) 
                 if !inArray(no_dups, i)
                         append!(no_dups, [i])
                 end
@@ -74,7 +116,6 @@ function exists_in_kb(kb, arr)
 end
 
 function tell(kb::KnowledgeBase, clauses::Array)
-	# first find all Relations and create index
 	if length(clauses) == 0
 		return true
 	end
@@ -103,7 +144,6 @@ function find_all_relations(c)
 	return [x.op for x in c]
 end
 
-# create indices for better unification
 function look_for_relation(c, rel::String)
         if typeof(c) == Array{Clause, 1}
                 if length(c) == 0
@@ -159,7 +199,7 @@ function index_clauses(kb::KnowledgeBase)
 end
 
 function standardize_variables(c::Clause, ref::AbstractVector,
-			      dict::Union{Nothing, Dict}=nothing)
+			      dict::Union{Nothing, Dict})
 	if typeof(dict) <: Nothing
 		dict = Dict()
 	end
@@ -169,13 +209,13 @@ function standardize_variables(c::Clause, ref::AbstractVector,
 			return dict[c]
 		else
 			ref[2] = iterate(ref[1], ref[2])[2]
-			new_var = Clause("v_$(repr(counter[2]))")
+			new_var = Clause("v_$(counter[2])")
 			dict[c] = new_var
-			return var
+			return new_var
 		end
 	else
 		return Clause(c.op,
-			      collect(standardize_variables(arg, dict=dict) for arg in c.args)...,)
+			      [standardize_variables(arg, ref, dict) for arg in c.args])
 	end
 end
 

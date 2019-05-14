@@ -7,7 +7,10 @@ println(signature)
 
 clauses = ["(B(x) & ~S(y,y)) ==> S(x,y)", 
 	   "~B(a) | ~S(b,b) | ~S(a,b)"]
-cnf_clauses = map(toCNF, map(toClause, map(lexer, clauses)))
+clauses = ["∀ x(∀ y((B(x) & ~S(y,y)) ==> S(x,y)))",
+	   "∀ x(∀ y(~B(a) | ~S(b,b) | ~S(a,b)))"]
+	   #"~(∃ x(∃ y(B(x) & ~S(y,y) & ~S(x,y)))"]
+cnf_clauses = map(skolemize, map(toCNF, map(toClause, map(lexer, clauses))))
 
 kb = KnowledgeBase(cnf_clauses)
 println("Knowledge Base")
@@ -17,6 +20,7 @@ verifyTheory(kb, signature)
 println()
 
 query = "~B(T)"
+query = "∀ x(~B(x))"
 query = toClause(lexer(query))
 
-resolve(kb, query)
+#resolve(kb, query)

@@ -7,7 +7,9 @@ end
 function negateHelper(c::Clause)
 	if c.op == "~"
 		arg = c.args[1]
-		if arg.op == "~"
+		if typeof(arg) == Quantifier
+			return negate(arg)
+		elseif arg.op == "~"
 			return negateHelper(arg.args[1])
 		elseif arg.op == "&"
 			return associate("|", map(negate, arg.args))
@@ -24,7 +26,25 @@ function negateHelper(c::Clause)
 	end
 end
 
-function associate(op::String, args::Array{Clause,1})
+function negateHelper(q::Quantifier)
+	return negate(q)
+end
+
+function negate(q::Quantifier)
+	new_q = Quantifier(q.op, q.var)
+
+	if q.op == forallTok
+		new_q.op = existsTok
+	elseif q.op == existsTok
+		new_q.op = forallTok
+	else
+		error("negateHelper(): Unknown quantifier operator $(q.op)")
+	end
+	new_q.args = negateHelper(Clause("~", [q.args]))
+	return new_q
+end
+
+function associate(op::String, args::Array)
 	dis_args = dissociate(op, args)
 	operator = op
 	if length(dis_args) == 0
@@ -46,13 +66,13 @@ function associate(op::String, args::Array{Clause,1})
 	end
 end
 
-function dissociate(operator::String, arguments::Array{Clause,1})
-    local result = Array{Clause, 1}([]);
+function dissociate(operator::String, arguments::Array)
+    local result = Array{Any, 1}([]);
     dissociate_collect(operator, arguments, result);
     return result;
 end
 
-function dissociate_collect(operator::String, arguments::Array{Clause,1}, result_array::AbstractVector)
+function dissociate_collect(operator::String, arguments::Array, result_array::AbstractVector)
     for argument in arguments
         if (argument.op == operator)
             dissociate_collect(operator, argument.args, result_array);
@@ -63,6 +83,9 @@ function dissociate_collect(operator::String, arguments::Array{Clause,1}, result
     nothing;
 end
 
+function eliminate_implications(q::Quantifier)
+	return Quantifier(q.op, q.var, eliminate_implications(q.args))
+end
 
 function eliminate_implications(e::Clause)
     if ((length(e.args) == 0) || is_symbol(e.op))
@@ -105,10 +128,19 @@ function constant(c::String)
 	return length(c.args) == 0 && Base.isupper(c.op[1])
 end
 
+#function toCNF(a::Array{Clause, 1})
+
+#end
+
 function toCNF(c::Clause)
 	c = eliminate_implications(c)
 	c = negateHelper(c)
 	return distribute_and_over_or(c)
+end
+
+function toCNF(q::Quantifier)
+	q.args = toCNF(q.args)
+	return q
 end
 
 function distribute_and_over_or(e::Clause)
@@ -236,8 +268,12 @@ function is_function(c::Clause)
 end
 
 # TODO COMPLETE
-function occurs_checker(subt, c1)
+function occurs(var::String, args::Array)
 	# check if the subt val in c1 vars
+	
+	for arg in args
+		if arg.op == var return true end
+	end
 	"""
 	v = [x for x in values(subt)][1]
 	for c in c1
@@ -250,7 +286,11 @@ function occurs_checker(subt, c1)
 		end
 	end
 	"""
-	return true
+	return false
+end
+
+function MGU(c1::Clause, c2::Clause)
+	return MGU([c1], 1, [c2], 1)
 end
 
 function MGU(c1::Array, k, c2::Array, m)
@@ -268,7 +308,7 @@ function MGU(c1::Array, k, c2::Array, m)
 		if subt != false
 			if occurs_check
 				# TODO FIX, why return here???
-				if occurs_checker(subt, c1::Array)
+				if occurs(subt, c1::Array)
 					return subt, flip
 				else return () end
 			else
@@ -296,7 +336,7 @@ function MGUHelper(c1::Clause, c2::Clause)
 		# TODO flip clauses!
 		return false, (c2.op,c1.op), true
         end
-        if is_constant(c1) && is_relation(c2)
+        if is_constant(c1) && is_function(c2)
 		#println("cons & rel")
                 return false, false
         end
@@ -312,23 +352,29 @@ function MGUHelper(c1::Clause, c2::Clause)
 		#end
                 return false, (c1.op,c2.op)
         end
-        if is_variable(c1) && is_relation(c2)
+        if is_variable(c1) && is_function(c2)
 		#println("var & rel")
                 # TODO occurance checker
+		if occurs(c1.op, c2.args)
+			return false, false
+		end
 		return true, (c1.op,c2.op)
         end
 
-        if is_relation(c1) && is_constant(c2)
+        if is_function(c1) && is_constant(c2)
 		#println("rel & cons")
                 return false, false
         end
-        if is_relation(c1) && is_variable(c2)
+        if is_function(c1) && is_variable(c2)
 		#println("rel & var")
                 # TODO occurance checker
 		# TODO flip clauses!
+		if occurs(c2.op, c1.args)
+			return false, false
+		end
                 return true, (c2.op,c1.op), true
         end
-        if is_relation(c1) && is_relation(c2)
+        if is_function(c1) && is_function(c2)
 		#println("rel & rel")
                 if c1.op != c1.op return false end
                 return MGU(c1.args, c2.args) #TODO Fix
@@ -558,7 +604,7 @@ end
 
 function resolve(kb, query)
         # add negated clause to kb
-        tell_cnf_terms(kb, [toCNF(negate(query))])
+	tell_cnf_terms(kb, [skolemize(negate(toCNF(query)))])
 
 	while true
 		flag = resolveHelper(kb, query)

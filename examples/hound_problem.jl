@@ -9,7 +9,13 @@ clauses = ["Hound(x) ==> Howl(x)",
            "(Has(y, z) & Cat(z)) ==> ~(Has(y,u) & Mouse(u))",
            "LS(w) ==> ~(Has(w, t) & Howl(t))",
            "Has(John, a) & (Cat(a) | Hound(a))"]
-cnf_clauses = map(toCNF, map(toClause, map(lexer, clauses)))
+
+clauses = ["∀ x(Hound(x) ==> Howl(x))",
+	    "∀ y(∀ z((Has(y, z) & Cat(z)) ==> ~(∃ u(Has(y,u) & Mouse(u)))))",
+	    "∀ w(LS(w) ==> ~(∃ t(Has(w, t) & Howl(t))))",
+	   "∀ a(Has(John, a) & (Cat(a) | Hound(a)))"]
+
+cnf_clauses = map(skolemize, map(toCNF, map(toClause, map(lexer, clauses))))
 
 kb = KnowledgeBase(cnf_clauses)
 println("Knowledge Base")
@@ -18,7 +24,8 @@ println(kb)
 verifyTheory(kb, signature)
 println()
 
-query = "LS(John) ==> ~(Has(John, b) & Mouse(b))"
+query = "LS(John) ==> ~(∃ b(Has(John, b) & Mouse(b)))"
+#query = "LS(John) ==> ~(Has(John, b) & Mouse(b))"
 query = toClause(lexer(query))
 
 #resolve(kb, query)

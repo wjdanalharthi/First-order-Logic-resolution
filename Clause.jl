@@ -1,20 +1,18 @@
 include("Parser.jl")
 
-varTok = "var"
 lparenTok = "("
 rparenTok = ")"
+
 notTok = "~"
 andTok = "&"
 orTok = "|"
 impliesTok = "==>"
 iffTok = "<=>"
-forallTok = "forall"
-existsTok = "exists"
-trueTok = "true"
-falseTok = "false"
-sigTok = "sig"
 
-OPS = [impliesTok, andTok, orTok, notTok]
+forallTok = "∀"
+existsTok = "∃"
+
+OPS = [impliesTok, andTok, orTok, notTok, iffTok]
 
 # =============================== Clause ============================
 mutable struct Clause
@@ -26,14 +24,17 @@ end
 function Clause(op::String, info)
 	args = Array{Clause, 1}()
         if length(info) > 0
-		args = Array{Clause, 1}([toClause(i) for i in info])
+		args = [toClause(i) for i in info]
         end
-	return Clause(op, Array{Clause, 1}(args), false)
+	return Clause(op, args, false)
 end
 
 function Clause(op::String)
 	return Clause(op, Array{Clause, 1}(), false)
 end
+
+Base.:(==)(e1::Clause, e2::Clause) = (e1.op == e2.op) && allEqual(e1.args, e2.args)
+Base.:(==)(e1::Array{Clause, 1}, e2::Array{Clause, 1}) = allEqual(e1, e2)
 
 function equal(e1, e2)
 	#println("first $e1")
@@ -67,14 +68,6 @@ function inArray(a2, c::Clause)
 	return false
 end
 
-function inArray(a, s::String)
-        for j in a
-                if j == s 
-                return true end
-        end
-        return false
-end
-
 function allEqual(a1::Array, a2::Array)
 	if length(a1) != length(a2) return false end
 	for i in a1
@@ -96,7 +89,7 @@ function allEqual(a1::Array, a2::Array)
 	return true
 end
 
-# WARNING 
+# WARNING # TODO FIX 
 # DEEP COPIES ONLY VARIABLE & CONSTANT ARGS
 function copyClause(c::Clause)
 	new_c = Clause(c.op)
@@ -107,12 +100,186 @@ function copyClause(c::Clause)
 	return new_c
 end
 
-function copyClause(c::Array{Clause, 1})
+function copyClause(c::Array)
 	new_arr = Array{Clause, 1}()
 	for i in c
 		append!(new_arr, Array{Clause, 1}([copyClause(i)]))
 	end
 	return new_arr
+end
+
+function copyClause(q::Quantifier)
+	new_q = Quantifier(q.op, q.var)
+	new_q.args = copyClause(q.args)
+	return new_q
+
+end
+
+
+function skolemize(q, foralls=[], dict::Dict=Dict([]))
+	if typeof(q) != Quantifier
+		if typeof(q) == Clause
+			if !(q.op in OPS)
+				if is_variable(q)
+					if haskey(dict, q.op)
+						q = copyClause(dict[q.op])
+					else
+						dict[q.op] = Clause(next_unique_variable())
+						q = copyClause(dict[q.op]) 
+					end
+					return q
+				elseif is_relation(q)
+					#for arg in q.args
+					#	dict[arg.op] = Clause(next_unique_variable())
+					#end
+                                        return Clause(q.op,
+                                                      skolemize(q.args, foralls, dict),
+                                                      q.negated)
+				else
+					return Clause(q.op, 
+						      skolemize(q.args, foralls, dict),
+						      q.negated)
+				end
+			elseif q.op in OPS
+		              	if q.op == "&" #&& q.args[1].op == "&"
+                	        	println("FOUND ONE: $q")
+                		end
+
+				#new_args = skolemize(q.args, foralls, dict)
+				if q.op in ["|", "&"] && typeof(q.args[1]) == Quantifier && q.args[1].args.op in ["|", "&"]
+						#cl.args[1].op == "|"
+                                                println("2nd FOUND ONE $q");println()
+						#q = copyClause(q.args[1])
+						rem = copyClause(q.args[2:end])
+						rem = [copyClause(x) for x in q.args[2:end]]
+						rem = q.args[2:end]
+						println("Remaining!: $rem");println()
+						append!(rem, q.args[1].args.args)
+
+						y= Clause(q.op, rem)
+						k = Quantifier(q.args[1].op, q.args[1].var, y)
+						println("HACK $k")
+						return skolemize(k)
+				end
+				return Clause(q.op,
+					      skolemize(q.args, foralls, dict),
+					      q.negated)
+			else
+				error("skolemize(): Unexpected clause operator $(q.op)")
+			end
+		elseif typeof(q) == Array{Clause, 1} || typeof(q) == Array{Any, 1}
+			if length(q) == 0
+				return q
+			else
+				#for clause in q
+				#	q = skolemize(clause, foralls, dict)
+				#end
+				new_args = [skolemize(clause, foralls, dict) for clause in q]
+				"""
+				new_args = []
+				for clause in q
+					t = skolemize(clause, foralls, dict)
+					# HACK TODO FIX
+					if typeof(t) == Clause && t.op == "|" && t.args[1].op == "|"
+						t = skolemize(t.args)
+						append!(new_args, t)
+					else
+						append!(new_args, [t])
+					end
+					#append!(new_args, [t])
+				end
+				"""
+				for cl in new_args
+					if cl.op == "|" && cl.args[1].op == "|"
+						println("FOUND ONE $cl")
+					end
+				end
+				return new_args
+			end
+
+		else
+			error("skolemize(): Unexpected type $(typeof(q))")
+		end
+	elseif q.op == forallTok
+		new_var = next_unique_variable()
+		dict[q.var] = Clause(new_var)
+		q.var = new_var
+		append!(foralls, [q])
+		skolemize_args = skolemize(q.args, foralls, dict)
+		#println("ARGS: $skolemize_args")
+		#if typeof(skolemize_args) != Quantifier
+		#	skolemize_args = remove_nesting(q.args)
+		#end
+		q.args = skolemize_args
+		return q.args
+	elseif q.op == existsTok
+		if length(foralls) == 0
+			unique_cons = next_unique_constant()
+			dict[q.var] = Clause(unique_cons)
+			return skolemize(q.args, foralls, dict)
+		end
+		forall_vars = [x.var for x in foralls]
+		vars_clauses = [Clause(x) for x in forall_vars]
+		unique_function_name =  next_unique_function()
+		new_function = Clause(unique_function_name, vars_clauses)
+		dict[q.var] = new_function
+		return skolemize(q.args, foralls, dict)
+	else 
+		error("skolemize(): Unexpected operator $(q.op)")
+	end
+end
+
+"""
+function remove_nesting(arr, last_seen_op="")
+	if typeof(arr) == Clause return arr end
+	if typeof(arr) == Quantifier return remove_nesting(arr.args) end
+	if length(arr) == 0
+		return arr
+	else
+		if arr[1].op in OPS
+			if arr[1].op in [orTok, andTok]
+				if arr[1].op == last_seen_op 
+					f = remove_nesting(arr[1].args, last_seen_op)
+					r = remove_nesting(arr[2:end], last_seen_op)
+					res = []
+					if typeof(f) == Clause
+						append!(res,[f]) 
+					else 
+						[append!(res, [x]) for x in f]
+					end
+					if typeof(r) == Clause append!(res, [r])
+					else
+						[append!(res, [x]) for x in r]
+					 end
+					return res
+					 #return Clause(last_seen_op, res)
+				else
+					last_seen_op=arr[1].op
+					return remove_nesting(arr[2:end], last_seen_op)
+				end
+			else
+				return [arr[1], remove_nesting(arr[2:end], last_seen_op)]
+			end
+		end
+	end
+	return arr
+
+end
+"""
+
+function next_unique_function(ref::AbstractVector=func_counter)
+	ref[2] = iterate(ref[1], ref[2])[2]
+        return "f$(ref[2])"
+end
+
+function next_unique_variable(ref::AbstractVector=var_counter)
+        ref[2] = iterate(ref[1], ref[2])[2]
+        return "v$(ref[2])"
+end
+
+function next_unique_constant(ref::AbstractVector=cons_counter)
+        ref[2] = iterate(ref[1], ref[2])[2]
+        return "C$(ref[2])"
 end
 
 function printTree(t::Clause, indent::String)
@@ -135,18 +302,41 @@ function printCNF(t::Any, indent::String="")
 	#	print("$(t.op) $(t.var)(")
 	#	printCNF(t.args, indent)
 	#	print(")")
-	if !(t.op in OPS)
+	if typeof(t) == Quantifier
+		printCNF(t)
+	
+	elseif !(t.op in OPS)
 		if length(t.args) == 0
 			print("$(t.op)")
 		else
 		if t.negated
 			print("~")
 		end
-                print("$(t.op)(")
-                for i=1:length(t.args)-1
-                        print("$(t.args[i].op),")
+                #print("$(t.op)(")
+		curr = "$(t.op)("
+                for i=1:length(t.args)
+			#print("$(t.args[i].op)")
+			curr*="$(t.args[i].op)"
+			if length(t.args[i].args) != 0
+				curr*= "("
+				for a=1:length(t.args[i].args)
+					#print("$(t.args[i].args[a].op),")
+					curr*="$(t.args[i].args[a].op),"
+				end
+				curr = curr[1:end-1]
+				#print(curr)
+				#print("), ")
+				curr*="), "
+				#print("$(t.args[i].args[end].op)), ")
+			else
+				curr*=", "
+				#print(", ")
+			end
                 end
-                print("$(t.args[end].op))")
+		curr=curr[1:end-2]
+		curr*=")"
+		print(curr)
+                #print("$(t.args[end].op))")
 		end
         else
                 #print(" $(t.op) ")
@@ -168,9 +358,15 @@ function printCNF(t::Any, indent::String="")
 			printCNF(t.args[end], indent*"\t")
 			#printcHelper(t.args[2:end], indent*"\t")
 		end
-
         end
 end
+
+function printCNF(q::Quantifier)
+	print("$(q.op).$(q.var)(")
+	printCNF(q.args)
+	print(")")
+end
+
 
 function printCNFClause(c::Array{Array{Clause,1},1})
         if length(c) == 0 
@@ -179,11 +375,11 @@ function printCNFClause(c::Array{Array{Clause,1},1})
         end
 	for arr in c
 		printCNFClause(arr)
-		println()
+		println("\n")
 	end
 end
 
-function printCNFClause(arr::Array{Clause,1})    
+function printCNFClause(arr::Array)    
 	if length(arr) == 0 
 		println("[]")
 		return
@@ -202,20 +398,23 @@ end
 
 function toClause(item)
 	#println("item $item")
-	if typeof(item) == Clause return item end
-
+	if typeof(item) == Clause || typeof(item) == Quantifier return item end
+	if length(item) == 0 return item end
         # check for operators in the following precedence
         # ==>, |, &, ~, strings and vars
 	if typeof(item) == String
 		#println("string $item")
 		return Clause(item, [])
         end
-	if "forall" in item
-		l, r = extract("forall", item)
-		return Quantifier("forall", r[1], toClause(r[2:end]))
-	elseif "exits" in item 
-                l, r = extract("exits", item)
-                return Quantifier("exits", r[1], toClause(r[2:end]))
+if impliesTok in item
+                l, r = extract(impliesTok, item)
+                return Clause(impliesTok, [l, r])
+	elseif forallTok in item
+		l, r = extract(forallTok, item)
+		return Quantifier(forallTok, r[1], toClause(r[2:end]))
+	elseif existsTok in item 
+                l, r = extract(existsTok, item)
+                return Quantifier(existsTok, r[1], toClause(r[2:end]))
 	elseif impliesTok in item
                 l, r = extract(impliesTok, item)
 		return Clause(impliesTok, [l, r])

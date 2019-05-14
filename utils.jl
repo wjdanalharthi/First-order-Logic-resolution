@@ -59,6 +59,10 @@ mutable struct Quantifier
 	args::Any
 end
 
+function Quantifier(op::String, var::String)
+	return Quantifier(op, var, [])
+end
+
 struct Operator
 	op::String
 	args::Array
@@ -74,7 +78,7 @@ function get_info(kb::KnowledgeBase,
 	return dict
 end
 
-function get_info(formula::Array{Clause, 1}, dict::Dict{String,Set{Any}})
+function get_info(formula::Array, dict::Dict{String,Set{Any}})
 	if length(formula) == 0
 		return dict
 	else
