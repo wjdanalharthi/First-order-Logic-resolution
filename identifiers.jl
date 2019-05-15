@@ -15,10 +15,7 @@ function is_function(c::Clause)
 end
 
 function is_symbol(s::String)
-    if length(s) == 0
-        return false
-    else
-        return Base.isletter(s[1])
-    end
+    if length(s) == 0 return false
+    else return Base.isletter(s[1]) end
 end
 

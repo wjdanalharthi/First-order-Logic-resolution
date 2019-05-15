@@ -2,25 +2,25 @@
 # =========================== Sigma
 struct Sigma
 	C::Set{String}
-	F::Set{String}
+	F::Set{Tuple{String,Int32}}
 	R::Set{Tuple{String,Int32}}
 end
 
-function Sigma(C::Array{String, 1}, F::Array{String, 1}, 
+function Sigma(C::Array{String, 1}, F::Array{Tuple{String,Int64}, 1}, 
 	       R::Array{Tuple{String,Int64}, 1})
-	return Sigma(Set{String}(C), Set{String}(F), Set{Tuple{String, Int32}}(R))
+	return Sigma(Set{String}(C), Set{Tuple{String,Int32}}(F), Set{Tuple{String, Int32}}(R))
 end
 
 function Sigma(R::Array{Tuple{String,Int64}, 1})
-	return Sigma(Set{String}(), Set{String}(), Set{Tuple{String, Int32}}(R) )
+	return Sigma(Set{String}(), Set{Tuple{String,Int32}}(), Set{Tuple{String, Int32}}(R) )
 end
 
-function Sigma(C::Array{Any, 1}, F::Array{String, 1}, R::Array{Tuple{String,Int64}, 1})
-        return Sigma(Set{String}(), Set{String}(F), Set{Tuple{String, Int32}}(R) )
+function Sigma(C::Array{Any, 1}, F::Array{Tuple{String,Int64}, 1}, R::Array{Tuple{String,Int64}, 1})
+	return Sigma(Set{String}(), Set{Tuple{String,Int32}}(F), Set{Tuple{String, Int32}}(R) )
 end
 
 function Sigma(C::Array{String, 1}, F::Array{Any, 1}, R::Array{Tuple{String,Int64}, 1})
-        return Sigma(Set{String}(C), Set{String}(), Set{Tuple{String, Int32}}(R) )
+        return Sigma(Set{String}(C), Set{String}(F), Set{Tuple{String, Int32}}(R) )
 end
 
 # =========================== Quantifier
@@ -75,7 +75,7 @@ end
 # ========================== Testing KB and Signature
 function get_info(kb::KnowledgeBase, 
 		  dict=Dict{String,Set{Any}}(["constants"=>Set{String}(),
-						     "functions"=>Set{String}(),
+						     "functions"=>Set{Tuple{String, Int32}}(),
 						     "relations"=>Set{Tuple{String, Int32}}()]))
 	for clause in kb.clauses
 		dict = get_info(clause[2], dict)
@@ -92,13 +92,12 @@ function get_info(formula::Array, dict::Dict{String,Set{Any}})
 		elseif is_constant(formula[1])
 			push!(dict["constants"], formula[1].op)
 		elseif is_function(formula[1])
-			push!(dict["functions"], formula[1].op)
+			push!(dict["functions"], (formula[1].op, length(formula[1].args)))
 		elseif is_relation(formula[1])
-			push!(dict["relations"], ((formula[1].op, length(formula[1].args))))
+			push!(dict["relations"], (formula[1].op, length(formula[1].args)))
 		else
 			error("In get_info(): unexpected operator $(formula[1].op)")
 		end
-
 		dict = get_info(formula[1].args, dict)
 		return get_info(formula[2:end], dict)
 	end
@@ -111,13 +110,15 @@ function verifyTheory(kb::KnowledgeBase, sg::Sigma)
 	""" Raise an error if symbols in the theory 
 	do not correspond to the signature."""
 	dict = get_info(kb)
-	if (dict["constants"] == sg.C) &&
-		(dict["functions"] == sg.F) &&
-		(dict["relations"] == sg.R)
-		println("PASS: The knowledge base (theory) corresponds to the given signature")
+	println(dict)
+	
+	if setdiff(dict["constants"], sg.C) == Set(Any[]) &&
+		setdiff(dict["functions"], sg.F) == Set(Any[]) &&
+		setdiff(dict["relations"], sg.R) == Set(Any[])
+		println("PASS")
+		return true
 	else
-		error("The knowledge base (theory) does NOT correspond to the given signature")
+		error("FAIL")
 	end
-	nothing
 end
 

@@ -4,20 +4,20 @@ end
 
 function Base.show(io::IO, sigma::Sigma)
         println("Signature");print("\t")
-        print("C: ");print(sigma.C);print("\n\t")
-        print("F: ");print(sigma.F);print("\n\t")
-        print("R: ");print(sigma.R);print("\n\t")
+	print("C: $(printSet(sigma.C))");print("\n\t")
+	print("F: $(printSet(sigma.F))");print("\n\t")
+	print("R: $(printSet(sigma.R))");print("\n\t")
 end
 
-function Base.show(io::IO, s::Set)
+function printSet(s::Set)
         r = "("
         for i in s
                 r*="$i, "
         end
         if length(r) != 1 r = r[1:end-2] end
         r*=")"
-        print(r)
-
+        #print(r)
+	return r
 end
 
 function Base.show(io::IO, d::Dict)
