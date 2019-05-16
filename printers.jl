@@ -1,4 +1,5 @@
 function Base.show(io::IO, kb::KnowledgeBase)
+	println("Knowledge Base")
         printCNFClause([x[2] for x in kb.clauses])
 end
 
@@ -31,7 +32,10 @@ function Base.show(io::IO, d::Dict)
 end
 
 function printUnifiers(d::Dict)
-        s = "{"
+	if length(d) == 0
+		return "{ϕ}"
+	end 
+	s = "{"
         for (k, v) in d
                 s *= printClause(k)
                 s *= "->"

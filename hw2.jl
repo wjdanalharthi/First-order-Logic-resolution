@@ -1,4 +1,6 @@
 using Base
+using Test
+
 include("structs.jl")
 include("globals.jl")
 include("Parser.jl")

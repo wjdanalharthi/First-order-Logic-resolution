@@ -5,7 +5,7 @@ end
 
 function splitStatement(s::String)
 	s = "(" * s * ")"
-	for i in ['(', ')', '&', '|', '~', "==>", "<=>"]
+	for i in ['(', ')', '&', '|', '~', "==>", "<=>", forallTok, existsTok]
 		s = replace(s, i => " $i ") 
 	end
 	s = replace(s, "," => " ")

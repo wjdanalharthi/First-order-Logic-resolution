@@ -14,8 +14,7 @@ function is_function(c::Clause)
         return !(c.op in OPS) && length(c.args) != 0 && Base.islowercase(c.op[1])
 end
 
-function is_symbol(s::String)
-    if length(s) == 0 return false
-    else return Base.isletter(s[1]) end
+function is_symbol(c::Clause)
+	return is_relation(c) || is_variable(c) || is_constant(c) || is_function(c)
 end
 

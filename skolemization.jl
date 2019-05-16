@@ -22,7 +22,7 @@ function skolemize(q, foralls=[], dict::Dict=Dict([]))
                                 end
                         elseif q.op in OPS
                                 # HACK for nested quantifiers
-                                if q.op in [orTok, andTok] && typeof(q.args[1]) == Quantifier && q.args[1].args.op in [orTok, andTok]
+                                if q.op in [orTok] && typeof(q.args[1]) == Quantifier && q.args[1].args.op in [orTok]
                                                 rem = copyClause(q.args[2:end])
                                                 rem = [copyClause(x) for x in q.args[2:end]]
                                                 rem = q.args[2:end]
@@ -31,14 +31,23 @@ function skolemize(q, foralls=[], dict::Dict=Dict([]))
                                                 y= Clause(q.op, rem)
                                                 k = Quantifier(q.args[1].op, q.args[1].var, y)
                                                 return skolemize(k)
-                                end
+				elseif q.op in [andTok] && typeof(q.args[1]) == Quantifier && q.args[1].args.op in [andTok]
+                                                rem = copyClause(q.args[2:end])
+                                                rem = [copyClause(x) for x in q.args[2:end]]
+                                                rem = q.args[2:end]
+                                                append!(rem, q.args[1].args.args)
+
+                                                y= Clause(q.op, rem)
+                                                k = Quantifier(q.args[1].op, q.args[1].var, y)
+                                                return skolemize(k)
+				end
                                 return Clause(q.op,
                                               skolemize(q.args, foralls, dict),
                                               q.negated)
                         else
                                 error("skolemize(): Unexpected clause operator $(q.op)")
                         end
-                elseif typeof(q) == Array{Clause, 1} || typeof(q) == Array{Any, 1}
+		elseif typeof(q) == Array{Clause, 1} || typeof(q) == Array{Any, 1}
                         if length(q) == 0
                                 return q
                         else

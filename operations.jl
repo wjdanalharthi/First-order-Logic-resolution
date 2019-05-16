@@ -2,12 +2,12 @@ function negate(c::Clause)
         return negateHelper(Clause(notTok, [c]))
 end
 
-function negateHelper(c::Clause)
+function negateHelper(c)
         if c.op == notTok
                 arg = c.args[1]
                 if typeof(arg) == Quantifier
                                 return negate(arg)
-                elseif arg.op == notTok
+		elseif arg.op == notTok
                                 return negateHelper(arg.args[1])
                 elseif arg.op == andTok
                                 return associate(orTok, map(negate, arg.args))
@@ -16,7 +16,9 @@ function negateHelper(c::Clause)
                 else
                                 return c
                 end
-        elseif (is_symbol(c.op) || (length(c.args) == 0))
+	elseif typeof(c) == Quantifier
+		return Quantifier(c.op, c.var, negateHelper(c.args))
+        elseif (is_symbol(c) || (length(c.args) == 0))
                 return c
         else
                 return Clause(c.op, map(negateHelper, c.args))
@@ -24,12 +26,14 @@ function negateHelper(c::Clause)
         end
 end
 
+"""
 function negateHelper(q::Quantifier)
         return negate(q)
 end
+"""
 
 function negate(q::Quantifier)
-        new_q = Quantifier(q.op, q.var)
+	new_q = Quantifier(q.op, q.var)
 
         if q.op == forallTok
                 new_q.op = existsTok
@@ -45,87 +49,70 @@ end
 function associate(op::String, args::Array)
         dis_args = dissociate(op, args)
         operator = op
-        if length(dis_args) == 0
-        if (operator == andTok)
-            return Clause("TRUE");
-        elseif (operator == orTok)
-            return Clause("FALSE");
-        else
-                error("associate(): Unknown quantifier operator $(q.op)")
-        end
-        elseif (length(dis_args) == 1)
+        if (length(dis_args) == 1)
                 return dis_args[1]
         else
                 return Clause(op, dis_args)
         end
 end
 
-function dissociate(operator::String, arguments::Array)
-    local result = Array{Any,1}([]);
-    dissociate_collect(operator, arguments, result);
+function dissociate(op, args::Array)
+    result = Array{Any,1}([]);
+    dissociate_collect(op, args, result);
     return result;
 end
 
-function dissociate_collect(operator::String, arguments::Array, result_array::AbstractVector)
-    for argument in arguments
-        if (argument.op == operator)
-            dissociate_collect(operator, argument.args, result_array);
-        else
-            push!(result_array, argument);
-        end
-    end
+function dissociate_collect(op, args::Array, results)
+	for arg in args
+		if (arg.op == op)
+			dissociate_collect(op, arg.args, results);
+		else
+			push!(results, arg);
+		end
+	end
 end
 
 function eliminate_implications(q::Quantifier)
         return Quantifier(q.op, q.var, eliminate_implications(q.args))
 end
 
-function eliminate_implications(e::Clause)
-    if ((length(e.args) == 0) || is_symbol(e.op))
-        return e;
-    end
-    local arguments = map(eliminate_implications, e.args);
-    local a = first(arguments);
-    local b = last(arguments);
-    if (e.op == "==>")
-            return Clause("|", [b, Clause("~", [a])]);
-    elseif (e.op == "<==")
-            return Clause("|", [a, Clause("~", [b])]);
-    elseif (e.op == "<=>")
-            return Clause("&", [Clause("|", [a, Clause("~", [b])]), Clause("|", [b, Clause("~", [a])])]);
-    else
-        if (!(e.op in ("&", "|", "~")))
-            Base.error("EliminateImplicationsError: Found an unexpected operator '", e.op, "'!");
-        end
-        return Clause(e.op, arguments);
+function eliminate_implications(c::Clause)
+	if length(c.args) == 0 || is_symbol(c)
+		return c;
+	end
+	args = map(eliminate_implications, c.args);
+	a = first(args);
+	b = last(args);
+	if (c.op == "==>")
+		return Clause(orTok, [b, Clause(notTok, [a])]);
+	elseif (c.op == "<=>")
+		return Clause(andTok, [Clause(orTok, [a, Clause(notTok, [b])]), Clause(orTok, [b, Clause(notTok, [a])])]);
+	else
+		if !(c.op in [andTok, orTok, notTok])
+		    error("eliminate_implications(): Unexpected operator $(c.op)");
+	    end
+        return Clause(c.op, args);
     end
 end
 
-function distribute_and_over_or(e::Clause)
-    if (e.op == "|")
-        local a::Clause = associate("|", e.args);
-        if (a.op != "|")
-            return distribute_and_over_or(a);
-        elseif (length(a.args) == 0)
-            return Clause("FALSE");
-        elseif (length(a.args) == 1)
-            return distribute_and_over_or(a.args[1]);
-        end
-        conjunction = findfirst((function(arg)
-            return (arg.op == "&");
-        end), a.args);
-        if (conjunction === nothing)  #(&) operator was not found in a.arguments
-            return a;
-        else
-            conjunction = a.args[conjunction];
-        end
-        others = collect(a for a in a.args);
-        rest = associate("|", others);
-        return associate("&", collect(distribute_and_over_or(Clause("|", [conjunction_arg, rest]))
-                                        for conjunction_arg in conjunction.args));
-    elseif (e.op == "&")
-        return associate("&", map(distribute_and_over_or, e.args));
-    else
-        return e;
-    end
+function distribute_and_over_or(c::Clause)
+	if (c.op == orTok)
+		a = associate(orTok, c.args);
+		if (a.op != orTok)
+			return distribute_and_over_or(a);
+        	end
+		conjuncts = findfirst(x->x.op==andTok, a.args);
+		if (conjuncts === nothing)
+			return a;
+		else
+			conjuncts = a.args[conjuncts];
+        	end
+		others = collect(a for a in a.args if (!(a == conjuncts)));
+		rest = associate(orTok, others);
+		return associate(andTok, [distribute_and_over_or(Clause("|", [arg, rest])) for arg in conjuncts.args]);
+	elseif (c.op == andTok)
+		return associate(andTok, map(distribute_and_over_or, c.args));
+	else
+		return c
+	end
 end

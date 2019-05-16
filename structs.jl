@@ -110,7 +110,6 @@ function verifyTheory(kb::KnowledgeBase, sg::Sigma)
 	""" Raise an error if symbols in the theory 
 	do not correspond to the signature."""
 	dict = get_info(kb)
-	println(dict)
 	
 	if setdiff(dict["constants"], sg.C) == Set(Any[]) &&
 		setdiff(dict["functions"], sg.F) == Set(Any[]) &&

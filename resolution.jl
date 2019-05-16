@@ -87,8 +87,11 @@ end
 
 function resolve(kb, query)
    	tell_cnf_terms(kb, [skolemize(negate(toCNF(query)))])
-   	println("$(repeat("-", 45))")
-   	println("Rule # |           θ $(repeat(" ", 10))|   New Rule")
+	println("\nKB ∪ ~Query")
+	println(kb)
+	
+	println("$(repeat("-", 45))")
+	println("Rule # |           θ $(repeat(" ", 10))|   New Rule")
    	println("$(repeat("-", 45))")
    	while true
       		flag = resolveHelper(kb, query)

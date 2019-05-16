@@ -14,7 +14,7 @@ function tell(kb::KnowledgeBase, clauses::Array)
 end
 
 function tell_cnf_terms(kb, arr)
-        for i in arr
+	for i in arr
 		if i.op == orTok
 			c = internalize_negation(i.args)
 			tell(kb, c)
@@ -23,7 +23,16 @@ function tell_cnf_terms(kb, arr)
 		elseif i.op == notTok
 			c = internalize_negation(i.args[1])
 			tell(kb, [c])
-                else
+                elseif i.op == andTok
+                        #or_args = [x for x in c if x.op == "|"]
+                        ind = findall(x->x.op=="|", i.args)
+			ind_and = findall(x->x.op!="|", i.args)
+			tell_cnf_terms(kb, i.args[ind])
+
+                        for c in ind_and
+				tell(kb, [i.args[c]])
+                        end     
+		else
 			tell(kb, [i.args[1]])
 			tell_cnf_terms(kb, i.args[2:end])
                 end

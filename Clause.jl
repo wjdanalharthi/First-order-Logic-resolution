@@ -58,7 +58,8 @@ function copyClause(c::Clause)
 	new_c = Clause(c.op)
 	new_c.negated = c.negated
 	for i in c.args
-		append!(new_c.args, Array{Clause, 1}([Clause(i.op)]))
+		i_args = [copyClause(x) for x in i.args]
+		append!(new_c.args, Array{Clause, 1}([Clause(i.op, i_args, i.negated)]))
 	end
 	return new_c
 end
