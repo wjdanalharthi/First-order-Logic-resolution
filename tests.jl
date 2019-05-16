@@ -47,34 +47,45 @@ for i=1:length(clauses)
 	print("\tStatement:\t");printCNF(s);println()
 	skolemized_s = skolemize(s)
 	print("\tSkolemized:\t");printCNF(skolemized_s);println("\n")
-	reset_counters()
 end
 
 # ======================= CNF form
 println("$(repeat("=", 15)) CNF Tests $(repeat("=", 15))")
-clauses = []
+clauses = ["∀ x(∀ y((Philo(x) & StudentOf (y, x)) ==> ∃ z(Book(z) & Write(x, z) & Read(y, z))))", "∀ x(Philo(x) ==> ∃ y(Book(y) & Write(x, y)))"]
+for i=1:length(clauses)
+        println("($i)")
+	s = toClause(lexer(clauses[i]))
+        t = toCNF(toClause(lexer(clauses[i])))
+        print("\tStatement:\t");printCNF(s);println()
+        print("\tCNF:\t\t");printCNF(t);println("\n")
+end
 
+# It is incorporated in all other functions.
 
 # ======================= Unification MGU
 println("$(repeat("=", 15)) Unification Tests $(repeat("=", 15))")
 clauses = [["P((f(x)))", "P((g(y)))"],
 	   ["P(x)", "P((f(y)))"],
 	   ["p((f(a)),(g(X)))", "p(Y,Y)"],
-	   ["P(x, (f(x,(g(y)))), y)", "P(a, z, u)"]]
+	   ["P(A,x)", "P(B,x)"],
+	   ["P(A,x)", "P(A,y)"],
+	   ["P(x,(f(x)))", "P((f(x)),x)"]]
 for i=1:length(clauses)
 	cnf = map(toCNF, map(toClause, map(lexer, clauses[i])))
 	print("Unify: ");printCNF(cnf[1]);print("\t");printCNF(cnf[2]);println()
+	println(cnf[2])
 	resolvants = MGU(cnf[1], cnf[2])
+	unifiers = nothing
 	if length(resolvants) == 2
 		unifiers, flip = resolvants
 	else
 		unifiers = resolvants
 	end
-	if unifiers == false
-		println("Not Unifiable")
-		break
+	if unifiers == false || length(unifiers) == 0
+		print("Not Unifiable")
+	else
+		print("θs: ");print(printUnifiers(unifiers))
 	end
-	print("MGU: ");print(printUnifiers(unifiers))
 	println("\n")
 end
 
@@ -91,8 +102,21 @@ println(kb)
 println("Does the KB entail $query?")
 query = toClause(lexer(query))
 resolve(kb, query)
+println()
 
 println("(2)")
+clauses = ["∀ x(I(x) ==> H(x))",
+           "~H(D)"]
+query = "H(x)"
+cnf_clauses = map(skolemize, map(toCNF, map(toClause, map(lexer, clauses))))
+kb = KnowledgeBase(cnf_clauses)
+println(kb)
+println("Does the KB entail $query?")
+query = toClause(lexer(query))
+resolve(kb, query)
+println()
+
+println("(3)")
 clauses = ["Mother(Lulu, Fifi)", "Alive(Lulu)",
 	   "∀ x(∀ y(Mother(x,y) ==> Parent(x,y)))",
 	   "∀ x(∀ y((Parent(x,y) & Alive(x)) ==> Older(x,y)))"]
@@ -103,6 +127,6 @@ println(kb)
 println("Does the KB entail $query?")
 query = toClause(lexer(query))
 resolve(kb, query)
-
+println()
 
 

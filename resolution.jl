@@ -82,7 +82,7 @@ function resolveHelper(kb, query)
          			end
       		end
    	end
-   	return false
+   	return "FAIL"
 end
 
 function resolve(kb, query)
@@ -95,7 +95,8 @@ function resolve(kb, query)
    	println("$(repeat("-", 45))")
    	while true
       		flag = resolveHelper(kb, query)
-      		if flag
+		if flag == "FAIL" break end
+		if flag
          		printEnd("Reached an empty clause\nKB entails query")
   	       		return true
       		else

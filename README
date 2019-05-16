@@ -36,6 +36,7 @@ this project implements a First-order Logic resolution program. That includes a 
 - String statements must be passed to lexer() to parse and separate the different components and combine by precedence. Then passed to toClause() to convert to a Clause object. 
 - Skolemization here does two things, get rid of quantifiers properly and standarize variables such that every new variable we need is a unique one in the KB 
 - the current resolution algorithm prints redundant steps  
+- the unifier shows redundant substituions (x->x or C->C) but they do not affect the algorithm
 
 ## Assignment Requirements
 - Q1: `Parser.jl` and `structs.jl`

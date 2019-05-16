@@ -16,6 +16,7 @@ function toCNF(q::Quantifier)
 	return q
 end
 
+# unused 
 function push_quantifiers(q, d::Array=[])
 	if typeof(q) != Quantifier
 		if typeof(q) == Array || typeof(q) == Array{Any,1} || typeof(q) == Array{Clause,1}
@@ -36,6 +37,7 @@ function push_quantifiers(q, d::Array=[])
 	return d
 end
 
+# unused
 function put_back(q, d, nest=nothing)
 	if nest == nothing
 		nest = Quantifier(d[1][1], d[1][2], nothing)

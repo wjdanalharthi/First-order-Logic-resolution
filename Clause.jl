@@ -94,7 +94,10 @@ function toClause(item)
 	if typeof(item) == String
 		return Clause(item, [])
         end
-if impliesTok in item
+	if iffTok in item
+		l, r = extract(iffTok, item)
+		return Clause(iffTok, [l, r])
+	elseif impliesTok in item
                 l, r = extract(impliesTok, item)
                 return Clause(impliesTok, [l, r])
 	elseif forallTok in item
