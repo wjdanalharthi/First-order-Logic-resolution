@@ -1,5 +1,5 @@
 
-## CS290: Artificial Intelligence: Homework #2
+## First-order Logic Resolution
 
 ## Project Description
 this project implements a First-order Logic resolution program. That includes a Parser, CNF and Skolemization conversions, and Unification.
